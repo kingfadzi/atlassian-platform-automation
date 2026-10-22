@@ -1,0 +1,22 @@
+schema_version: 1
+repository: https://github.com/kingfadzi/atlassian-cloud
+commit: 72d10b8032c4be75f339aa155c728e31569e51bd
+sources:
+  register:
+    path: docs/strategy/control-requirements-register.md
+    revision: "0.2"
+    sha256: d73ecde4e1df1d1e9924d54c0fddc69a65e9dc2b4b91bbd9a354c7bffec61d0d
+  assessment:
+    path: docs/strategy/automation-coverage-assessment.md
+    sha256: ef13afac337a9994c4b8b8d14dacdfc7eb2310e6d95355674d7943f62723989f
+expected_controls:
+  count: 52
+  sorted_ids_sha256: 7dc153d14b2475c2a98fdefed38d6aaa52e4f1f89165ea41ccfc8a02c199e1ab
+expected_parameters: 22
+profile: {id: FS-COLLAB-01, version: "0.1", status: assumed}
+interpretation: proposed_customer_requirements_not_verbatim_catalogue
+catalogue_reference:
+  name: CCM
+  version: "4.1.1"
+  url: https://cloudsecurityalliance.org/download/artifacts/cloud-controls-matrix-v4-1
+  full_catalogue_vendored: false

@@ -1,0 +1,64 @@
+schema_version: 1
+register_revision: "0.2"
+profile: {id: FS-COLLAB-01, version: "0.1"}
+status: scaffold_index_not_control_implementation
+controls:
+  - {control_id: AIS-02, parameters: [P-05, P-07, P-09, P-15], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: AIS-05, parameters: [P-11, P-22], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: AIS-06, parameters: [P-10, P-11, P-13], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: AIS-07, parameters: [P-21], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: AIS-08, parameters: [P-01, P-07, P-09, P-15], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: BCR-08, parameters: [P-19], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: CCC-02, parameters: [P-10, P-11], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: CCC-04, parameters: [P-10, P-11, P-13], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: CCC-06, parameters: [P-05, P-15], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: CCC-07, parameters: [P-12, P-13], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: CCC-08, parameters: [P-14], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: CCC-09, parameters: [P-11, P-19], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: CEK-03, parameters: [], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: CEK-08, parameters: [], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-03, parameters: [P-05, P-13, P-15], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-04, parameters: [P-05, P-13], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-05, parameters: [P-07, P-09, P-15], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-06, parameters: [P-05, P-13, P-15], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-07, parameters: [P-05, P-06, P-07, P-09], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-08, parameters: [P-06, P-09], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-10, parameters: [P-06, P-07, P-08, P-09], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-12, parameters: [P-05, P-09, P-13], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-15, parameters: [P-22], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-16, parameters: [P-16, P-17], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-17, parameters: [P-05, P-06, P-07], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: DSP-19, parameters: [P-08], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: IAM-04, parameters: [P-02, P-10], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: IAM-05, parameters: [P-03, P-04, P-06, P-09], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: IAM-08, parameters: [P-03, P-15], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: IAM-09, parameters: [P-01, P-02], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: IAM-10, parameters: [P-02, P-04], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: IAM-15, parameters: [P-04, P-05, P-07, P-13], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: IPY-02, parameters: [], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: IPY-03, parameters: [P-07], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: I&S-03, parameters: [P-01, P-07, P-15], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: I&S-05, parameters: [P-22], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: I&S-06, parameters: [P-05, P-07], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: LOG-02, parameters: [P-16, P-17], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: LOG-03, parameters: [P-12, P-18, P-20], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: LOG-04, parameters: [P-17], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: LOG-05, parameters: [P-18, P-20], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: LOG-07, parameters: [P-15, P-16], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: LOG-08, parameters: [P-16, P-17], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: LOG-10, parameters: [P-16, P-17], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: LOG-14, parameters: [P-18], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: SEF-06, parameters: [P-20], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: SEF-07, parameters: [P-15, P-20], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: SEF-09, parameters: [P-17, P-20], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: STA-08, parameters: [P-04, P-09, P-13], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: TVM-03, parameters: [P-21], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: TVM-06, parameters: [P-21], implementation: not_started, acceptance: untested, tests: []}
+  - {control_id: TVM-08, parameters: [P-14, P-21], implementation: not_started, acceptance: untested, tests: []}
+source_cadence_constraints:
+  annual_or_significant_change: [AIS-08, CCC-06, DSP-03, DSP-05, IAM-08]
+  annual_review: [DSP-06, I&S-03]
+  annual_and_threat_or_obligation_review: [LOG-07]
+  annual_response_review_update_test: [SEF-07]
+  detection_at_least_monthly: [TVM-03]
+  immediate_known_monitoring_failure_notification: [LOG-14]

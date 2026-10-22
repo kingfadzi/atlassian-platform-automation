@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "record_id": "fixture:ownership-lab-001",
+  "record_type": "ownership",
+  "subject_ref": "BA-LAB-001",
+  "source": {"system": "synthetic_application_registry", "reference": "fixture:ownership-lab-001", "version": "1"},
+  "observed_at": "2026-10-22T12:00:00Z",
+  "effective_at": "2026-10-22T12:00:00Z",
+  "expires_at": null,
+  "status": "active",
+  "synthetic": true,
+  "data": {"accountable_owner_ref": "PERSON-LAB-OWNER", "steward_ref": "PERSON-LAB-STEWARD"}
+}

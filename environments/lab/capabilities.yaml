@@ -1,0 +1,30 @@
+schema_version: 1
+environment: lab
+live_verification: untested
+execution_authorized: false
+source: governance/source-references.yaml
+checks:
+  - id: jira_project_permissions
+    documented_route: api_backed
+    live_verification: untested
+    source_url: https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/
+  - id: confluence_space_access
+    documented_route: api_backed_tenant_model_dependent
+    live_verification: untested
+    source_url: https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-space/
+  - id: shared_control_policies
+    documented_route: vendor_confirmation_required
+    live_verification: untested
+    source_url: https://developer.atlassian.com/cloud/admin/control/rest/api-group-policies/
+  - id: identity_expiry_and_revocation
+    documented_route: partial_scope_and_timing_unverified
+    live_verification: untested
+    source_url: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/
+  - id: audit_collection
+    documented_route: api_backed_event_coverage_requires_verification
+    live_verification: untested
+    source_url: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-events/
+  - id: backup_and_restore
+    documented_route: api_backed_entitlement_and_scope_dependent
+    live_verification: untested
+    source_url: https://developer.atlassian.com/cloud/backup-management-apis/rest/api-group-public/

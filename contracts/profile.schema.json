@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:atlassian-platform-automation:profile:v1",
+  "title": "Provisional FS profile structure; values remain subject to source review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "version", "status", "scope", "production_approved", "source_register_revision", "timing", "parameters"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"const": "FS-COLLAB-01"},
+    "version": {"const": "0.1"},
+    "status": {"const": "assumed"},
+    "scope": {"const": "internal_jira_confluence_collaboration"},
+    "production_approved": {"const": false},
+    "source_register_revision": {"const": "0.2"},
+    "timing": {"type": "object", "minProperties": 1},
+    "parameters": {
+      "type": "object", "minProperties": 22, "maxProperties": 22,
+      "propertyNames": {"pattern": "^P-(0[1-9]|1[0-9]|2[0-2])$"},
+      "additionalProperties": {"type": "object", "minProperties": 1}
+    }
+  }
+}

@@ -1,0 +1,5 @@
+# Direct dependencies for local validation only; resolved versions are in the lock.
+PyYAML==6.0.3
+jsonschema==4.26.0
+# jsonschema intentionally makes format checking optional; require RFC3339 here.
+rfc3339-validator==0.1.4

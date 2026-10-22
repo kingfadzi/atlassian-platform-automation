@@ -1,0 +1,142 @@
+schema_version: 1
+id: FS-COLLAB-01
+version: "0.1"
+status: assumed
+scope: internal_jira_confluence_collaboration
+production_approved: false
+source_register_revision: "0.2"
+timing:
+  minutes_and_hours: elapsed_time
+  days: calendar_days
+  months_and_years: calendar_intervals
+  daily: {value: 24, unit: hours}
+  privilege_clock: activation
+  revocation_clock: authoritative_withdrawal_decision
+  incident_clock: detection
+  vulnerability_clock: first_applicable_actionable_advisory_or_confirmed_finding
+  rto_clock: interruption_to_restored_usable_service
+  rpo_reference: interruption_point
+  retries_reset_deadlines: false
+parameters:
+  P-01:
+    human_identity_provider: firm_idp
+    human_mfa_required: true
+    administrative_mfa: phishing_resistant
+    emergency_accounts: separately_controlled
+  P-02:
+    human_elevation_max: {value: 1, unit: hours}
+    separate_administrative_identities: true
+    standing_human_privilege: approved_emergency_only
+    service_identity_lifetime: separate_decision
+    session_timeout: separate_decision
+  P-03:
+    sensitive_review_interval: {value: 3, unit: calendar_months}
+    sensitive_populations: [privileged, service_account, external, Confidential, Restricted]
+    standard_internal_review_interval: {value: 6, unit: calendar_months}
+    shortest_applicable_interval: true
+    material_change_review: true
+  P-04:
+    compromised_or_urgent_leaver_revocation: {value: 15, unit: minutes}
+    routine_revocation: {value: 4, unit: hours}
+    verify_paths: [account, session, token, app_mediated]
+  P-05:
+    required: [business_application, accountable_owner, validated_classification, approved_standard]
+    invalid_authority: block_admission_and_access_expansion
+    existing_assets: scoped_containment_not_automatic_deletion
+  P-06:
+    anonymous_access: false
+    public_links: false
+    default_audience: specific_team
+    external_required: [approved_recipients, named_sponsor, expiry]
+    external_access_max: {value: 30, unit: days}
+    renewal: fresh_authorised_decision
+  P-07:
+    required_approval: [identity, client, integration, destination]
+    managed_devices_for_human_access: [administration, Confidential, Restricted]
+    non_human_access: approved_service_identity_and_execution_context
+    assess_paths: [browser, api, app, callback, export]
+    firm_network_mediates_all_saas_traffic: false
+  P-08:
+    supported_product_data_region: EU
+    separate_assessment: [metadata, support_access, marketplace_apps, backups, other_processing]
+    whole_service_residency_implied: false
+  P-09:
+    installation_and_consent: platform_administrators
+    integration_required: [approved_scopes, approved_data_access, approved_destinations, asset_specific_permission]
+    rovo_rollout_authorised: false
+    rovo_actual_access: unverified
+  P-10:
+    ordinary_independent_technical_reviewers: 1
+    sensitive_independent_technical_reviewers: 2
+    sensitive_changes: [tenant_wide_security, identity, shared_permissions]
+    sensitive_requires_security_reviewer: true
+    business_control_approval_separate: true
+  P-11:
+    observe_before_apply: true
+    bind_approval_to: [candidate_revision, target_scope, authoritative_inputs]
+    material_change_invalidates_plan: true
+    destruction_requires_explicit_authority: true
+  P-12:
+    critical_security_observation_max: {value: 15, unit: minutes}
+    other_configuration_observation_max: {value: 24, unit: hours}
+    automatic_correction_requires: [explicit_authority, tested, reversible]
+    unreadable_state: unknown
+  P-13:
+    revalidate_before: [admission, material_access_change]
+    missing_stale_or_revoked_authority: no_allow_decision
+    per_source_maximum_age: null
+    null_age_means: unresolved_not_unlimited
+  P-14:
+    exception_max: {value: 30, unit: days}
+    high_risk_exception_max: {value: 7, unit: days}
+    required: [scope, accountable_owner, compensating_controls, expiry]
+    renewal: fresh_decision
+    expiry: end_exception_reliance
+    legal_obligations_waivable: false
+  P-15:
+    control_profile_review_max: {value: 12, unit: calendar_months}
+    additional_triggers: [material_platform_change, supplier_change, threat_change, regulatory_change]
+    stricter_source_requirements_preserved: true
+  P-16:
+    operational_logs_searchable: {value: 90, unit: days}
+    operational_logs_total_protected: {value: 365, unit: days}
+    total_includes_searchable_period: true
+    native_shortfall: firm_controlled_collection_and_storage
+    preservation_holds_override_disposal: true
+  P-17:
+    decision_evidence_retention: {value: 7, unit: calendar_years}
+    trigger: closure_or_supersession_by_record_category
+    scope: [material_approvals, exceptions, releases, control_acceptance]
+    separate_schedules: [business_content, raw_telemetry, other_records]
+  P-18:
+    collection_failure_detection_max: {value: 5, unit: minutes}
+    notify_after_known_failure: immediate
+    health_signal: explicit_not_event_silence
+    source_event_delay: measured_separately
+  P-19:
+    rto: {value: 24, unit: hours}
+    rpo: {value: 24, unit: hours}
+    protected_recovery_point_interval_max: {value: 24, unit: hours}
+    restoration_test_interval_max: {value: 3, unit: calendar_months}
+    distinguish: [provider_outage, content_restore, configuration_recovery]
+    supplier_commitment_implied: false
+    production_copy_service_authorised: false
+  P-20:
+    inherited_security_coverage: "24x7"
+    critical_triage_max: {value: 15, unit: minutes}
+    critical_containment_target: {value: 1, unit: hours}
+    actions: preauthorised_only
+    coverage_and_effectiveness: unverified
+  P-21:
+    scope: firm_managed_automation_and_dependencies
+    advisory_check_interval_max: {value: 24, unit: hours}
+    remediation_days: {critical: 7, high: 14, medium: 30, low: 90}
+    active_exploitation_containment_max: {value: 24, unit: hours}
+    earlier_applicable_deadline_not_extended: true
+    provider_components: separate_supplier_treatment
+  P-22:
+    non_production_data: synthetic_only
+    production_copy_paths_enabled: false
+    real_customer_information_allowed: false
+    firm_secrets_allowed_in_personal_lab: false
+    credentials: isolated_lab_test_credentials_only

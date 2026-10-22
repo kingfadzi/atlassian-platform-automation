@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "record_id": "fixture:evidence-untested-001",
+  "evidence_type": "schema_fixture",
+  "synthetic": true,
+  "environment": "lab",
+  "target_ref": "lab-confluence-private",
+  "control_ids": ["DSP-06", "IAM-15"],
+  "register_revision": "0.2",
+  "profile": {"id": "FS-COLLAB-01", "version": "0.1", "status": "assumed"},
+  "implementation_revision": "UNIMPLEMENTED-SCAFFOLD",
+  "observed_at": "2026-10-22T12:00:00Z",
+  "result": "untested",
+  "authority_refs": ["fixture:ownership-lab-001"],
+  "observations": [],
+  "retention_category": "material_decision"
+}
