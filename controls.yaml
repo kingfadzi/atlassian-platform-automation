@@ -1,0 +1,80 @@
+repository: https://github.com/kingfadzi/atlassian-cloud
+commit: 72d10b8032c4be75f339aa155c728e31569e51bd
+sources:
+  register:
+    path: docs/strategy/control-requirements-register.md
+    revision: "0.2"
+    sha256: d73ecde4e1df1d1e9924d54c0fddc69a65e9dc2b4b91bbd9a354c7bffec61d0d
+  assessment:
+    path: docs/strategy/automation-coverage-assessment.md
+    sha256: ef13afac337a9994c4b8b8d14dacdfc7eb2310e6d95355674d7943f62723989f
+catalogue: {name: CCM, version: "4.1.1", interpretation: proposed_customer_requirements}
+profile: {id: FS-COLLAB-01, version: "0.1", status: assumed}
+profile_snapshot_sha256: 5c587c50fd5000597c41d953001181b5aafc06128f62961725926fb0b4cff73e
+expected_controls:
+  count: 52
+  sorted_ids_sha256: 7dc153d14b2475c2a98fdefed38d6aaa52e4f1f89165ea41ccfc8a02c199e1ab
+expected_parameters: 22
+# Applies to every mapping below. Add implementation/test references only when real.
+implementation: not_started
+acceptance: untested
+controls:
+  AIS-02: [P-05, P-07, P-09, P-15]
+  AIS-05: [P-11, P-22]
+  AIS-06: [P-10, P-11, P-13]
+  AIS-07: [P-21]
+  AIS-08: [P-01, P-07, P-09, P-15]
+  BCR-08: [P-19]
+  CCC-02: [P-10, P-11]
+  CCC-04: [P-10, P-11, P-13]
+  CCC-06: [P-05, P-15]
+  CCC-07: [P-12, P-13]
+  CCC-08: [P-14]
+  CCC-09: [P-11, P-19]
+  CEK-03: []
+  CEK-08: []
+  DSP-03: [P-05, P-13, P-15]
+  DSP-04: [P-05, P-13]
+  DSP-05: [P-07, P-09, P-15]
+  DSP-06: [P-05, P-13, P-15]
+  DSP-07: [P-05, P-06, P-07, P-09]
+  DSP-08: [P-06, P-09]
+  DSP-10: [P-06, P-07, P-08, P-09]
+  DSP-12: [P-05, P-09, P-13]
+  DSP-15: [P-22]
+  DSP-16: [P-16, P-17]
+  DSP-17: [P-05, P-06, P-07]
+  DSP-19: [P-08]
+  IAM-04: [P-02, P-10]
+  IAM-05: [P-03, P-04, P-06, P-09]
+  IAM-08: [P-03, P-15]
+  IAM-09: [P-01, P-02]
+  IAM-10: [P-02, P-04]
+  IAM-15: [P-04, P-05, P-07, P-13]
+  IPY-02: []
+  IPY-03: [P-07]
+  I&S-03: [P-01, P-07, P-15]
+  I&S-05: [P-22]
+  I&S-06: [P-05, P-07]
+  LOG-02: [P-16, P-17]
+  LOG-03: [P-12, P-18, P-20]
+  LOG-04: [P-17]
+  LOG-05: [P-18, P-20]
+  LOG-07: [P-15, P-16]
+  LOG-08: [P-16, P-17]
+  LOG-10: [P-16, P-17]
+  LOG-14: [P-18]
+  SEF-06: [P-20]
+  SEF-07: [P-15, P-20]
+  SEF-09: [P-17, P-20]
+  STA-08: [P-04, P-09, P-13]
+  TVM-03: [P-21]
+  TVM-06: [P-21]
+  TVM-08: [P-14, P-21]
+source_cadence_constraints:
+  annual_or_significant_change: [AIS-08, CCC-06, DSP-03, DSP-05, IAM-08]
+  annual_review: [DSP-06, I&S-03]
+  annual_and_threat_or_obligation_review: [LOG-07]
+  annual_response_review_update_test: [SEF-07]
+  detection_at_least_monthly: [TVM-03]
+  immediate_known_monitoring_failure_notification: [LOG-14]

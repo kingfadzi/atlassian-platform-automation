@@ -1,0 +1,38 @@
+# Draft intent only. No credentials, native IDs, approval records or live connection.
+environment: lab
+synthetic: true
+profile: FS-COLLAB-01
+deletion_authorized: false
+foundation:
+  parameters: [P-01, P-02, P-06, P-07, P-08, P-09, P-12, P-16, P-18]
+  managed_properties:
+    - identity_policy
+    - sharing_policy
+    - integration_policy
+    - supported_data_placement
+    - monitoring
+assets:
+  - asset_key: lab-confluence-private
+    kind: confluence_space
+    initial_visibility: private
+    business_application_ref: BA-LAB-001
+    requested_classification: Internal
+    audience_group_refs: [GROUP-LAB-TEAM]
+    authority_refs:
+      application: fixture:application-lab-001
+      ownership: fixture:ownership-lab-001
+      classification: fixture:classification-internal-001
+      approval: fixture:approval-lab-001
+    managed_properties: [space_access, classification_default, public_link_restriction]
+  - asset_key: lab-jira-internal
+    kind: jira_project
+    management_type: company_managed
+    business_application_ref: BA-LAB-001
+    requested_classification: Internal
+    audience_group_refs: [GROUP-LAB-TEAM]
+    authority_refs:
+      application: fixture:application-lab-001
+      ownership: fixture:ownership-lab-001
+      classification: fixture:classification-internal-001
+      approval: fixture:approval-lab-001
+    managed_properties: [permission_scheme, project_roles, classification_default]

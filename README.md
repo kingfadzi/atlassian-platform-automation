@@ -1,79 +1,63 @@
 # Atlassian Platform Automation
 
-Initial scaffold | 22 October 2026
+**Declare intent, apply authorised changes, verify the outcome, retain evidence.** Start with ordinary configuration and small scripts; add abstractions only when working implementations need them.
 
-**Version intent, apply only authorised changes, verify the result and retain evidence.** This repository is the implementation starting point for the governed Atlassian platform, not another strategy pack or an implemented control plane.
+## What is here
 
-## Current state
+```text
+controls.yaml           Pinned requirements, 52 control mappings and review cadences
+config/profile.yaml     All 22 provisional FS-COLLAB-01 parameter groups
+config/lab.yaml         Foundation scope and two synthetic asset declarations
+config/schema.yaml      One standard JSON Schema for lab input validation
+scripts/check.py        Offline validation and optional source verification
+tests/test_check.py     Tests for those checks, not control acceptance
+```
 
-| Area | Status |
-| :--- | :--- |
-| **Governance** | Source revisions pinned; all 52 CCM entries indexed; 22 `FS-COLLAB-01 v0.1` parameter groups encoded as **assumed**. |
-| **Local checks** | YAML/JSON parsing, JSON Schema validation, cross-reference checks and scaffold tests. No policy decision or live access test is implemented. |
-| **Examples** | Draft Jira/Confluence patterns, unbound lab configuration and explicitly synthetic fixtures. |
-| **Execution** | No policy engine, CI platform, configuration engine or live adapter selected. `plan`, `apply`, `verify` and `observe` deliberately exit nonzero. |
-| **Git** | Private repository: [kingfadzi/atlassian-platform-automation](https://github.com/kingfadzi/atlassian-platform-automation). No tenant connection is configured. |
+**This is an input scaffold, not a working control plane.** It has no tenant connection, executable policy, API adapter, state service or deployment pipeline.
 
-## Quick start
+## Run
 
-Requires Python 3.11+ and Make for local development checks. Python is a scaffold-validation tool here, not a selection of the eventual execution runtime.
+Requires Python 3.11+ and Make. Python is used for these checks; the execution runtime, policy engine and CI platform remain undecided.
 
 ```sh
-git clone https://github.com/kingfadzi/atlassian-platform-automation.git
-cd atlassian-platform-automation
 make bootstrap
-make validate
-make test
 make check
-make status
-```
-
-`bootstrap` installs development dependencies into `.venv`; it needs package-index access. Validation and tests run offline after installation, and do not read tenant credentials.
-
-```sh
-make plan       # BLOCKED; intentionally nonzero
-make apply      # BLOCKED; intentionally nonzero
-make verify     # BLOCKED; intentionally nonzero
-make observe    # BLOCKED; intentionally nonzero
-```
-
-No confirmation flag, environment variable or fixture approval enables live execution. Implement and review the missing contracts before replacing these guards.
-
-To check the source pins against a local strategy clone without network access:
-
-```sh
+# Optional: verify register/assessment bytes and control mappings against a local clone.
 make check-sources STRATEGY_REPO=/path/to/atlassian-cloud
 ```
 
-This verifies source bytes and the extracted control/parameter bindings at the pinned commit. It does not prove that prose-to-configuration interpretation is complete or that the profile is firm-approved.
+Dependency installation needs package-index access; subsequent checks run offline. There are no pretend `plan`, `apply`, `verify` or `observe` commands.
 
-## Layout
+## Configuration and authority
 
-```text
-governance/       Source pins, provisional parameters, control bindings
-contracts/       Input, pattern, profile and evidence JSON Schemas
-policy/          Policy requirements; executable engine not selected
-patterns/        Draft foundation, Jira and Confluence intent
-environments/    Unbound lab bindings, capability prerequisites, asset examples
-execution/       Adapter contracts; no remote implementation
-pipelines/       CI-neutral change/observation contract
-tests/           Offline scaffold tests and synthetic fixtures
-tools/           Local validation and explicit blocked-command guards
-operations/      Bootstrap, drift, monitoring, partial failure and recovery
-```
+- **Requirements:** `controls.yaml` pins the [strategy repository](https://github.com/kingfadzi/atlassian-cloud), register and coverage assessment. All controls remain unimplemented and untested.
+- **Policy inputs:** `config/profile.yaml` preserves `FS-COLLAB-01 v0.1` as **assumed, not firm-approved**. Its snapshot hash detects unintended changes; an intentional revision must update both the profile and its pin.
+- **Managed scope:** `config/lab.yaml` identifies foundation properties and example Jira/Confluence assets. Profile parameters supply required outcomes; the YAML is not a new policy language or provider configuration.
+- **Product standards:** Jira starts with a company-managed project; Confluence starts with a private space. Business ownership does not imply native administration; confirm the tenant's Confluence access model before choosing APIs.
+- **External authority:** business application, ownership, classification, approval and exception decisions must come from designated sources at execution time. `fixture:` references are unresolved synthetic placeholders, not approval records.
+- **Platform prerequisites:** prove identity, sharing, integration/egress, supported data placement and audit controls before releasing an asset. A SaaS perimeter does not imply that all traffic passes through the firm's network.
+- **Honest coverage:** unsupported, deprecated, manual and untested capabilities remain explicit gaps. Input validation does not prove API support, policy correctness or compliance.
 
-## Operating rules
+## First working path
 
-- **Authority is external:** consume current application, owner, classification, approval and exception records. An editable file or merged change does not replace those decisions.
-- **Fixtures are not decisions:** `synthetic: true` data models inputs for tests only. Schema-valid or fixture-approved does not mean release-approved.
-- **Manage explicit scope:** adopt resources/properties deliberately; an omitted declaration never authorises deletion.
-- **Foundation precedes release:** verify identity, sharing, execution and audit prerequisites before a dependent asset can be released.
-- **Keep runtime data outside Git:** secrets, authoritative records, observed state, generated native IDs, plans, checkpoints, cursors and retained evidence belong in protected runtime services.
-- **Evidence remains categorical:** operational logs and material decision records have different schedules. CI artifacts do not automatically meet protected or long-term retention requirements.
-- **Do not manufacture API coverage:** unsupported, deprecated, experimental and untested paths remain explicit limitations.
+Implement one bounded path after its foundation prerequisites. Keep product-specific code in a plain script initially; choose an established policy/configuration tool where it demonstrably helps.
 
-## First implementation
+| Step | Required outcome |
+| :--- | :--- |
+| **Check authority** | Resolve current application, owner, classification and scoped approval; reject missing, stale, conflicting or revoked inputs. P-13 source freshness limits remain unresolved. |
+| **Observe and plan** | Read real state; limit changes to declared properties; bind the plan to the candidate, target and authority. Omission never authorises deletion. |
+| **Approve and apply** | Keep technical review separate from business authority. Recheck both state and authority before writes; account for shared-scheme impact and overlapping changes. |
+| **Verify and record** | Read back and test actual permitted/denied access. Mark partial application incomplete; keep the asset restricted until verification and registration succeed. |
+| **Operate** | Repeat without unnecessary writes; detect drift independently of merges. Never restore withdrawn access; unreadable state is unknown. |
 
-Choose one Jira or Confluence path after establishing foundation prerequisites. Prove current synthetic inputs, policy denial/permission, bounded application, real allowed/denied access, evidence output, repeat-run safety, drift detection and partial-failure recovery.
+Prove **repeat-run safety, denied access, drift, stale authority and partial-failure recovery** with synthetic data. Do not count scaffold tests as acceptance of any of the 52 controls.
 
-No migration factory, production-copy service, archive service or Rovo rollout is implemented. Existing strategy and requirements remain in the [strategy repository](https://github.com/kingfadzi/atlassian-cloud); this project pins them rather than copying the documents.
+## Operating boundaries
+
+- **Git holds intent:** keep secrets, authoritative records, native IDs, observed state, plans, checkpoints, event cursors and retained evidence in protected runtime services, not this repository.
+- **Recovery is explicit:** preserve progress, reread uncertain results and revalidate authority before retrying. A Git revert does not reverse SaaS effects.
+- **Observation has deadlines:** P-12 sets critical/other observation limits; P-18 requires independent collection-health detection and notification. Event silence is not proof of health.
+- **Evidence has categories:** P-16 covers operational logs; P-17 covers material decisions. CI artifacts alone do not provide protected retention, integrity or independent retrieval.
+- **Lab isolation:** synthetic data and isolated lab credentials only. No production-copy, migration, archive or Rovo service is enabled.
+
+The full control detail stays in the pinned register and profile. Add policy modules, adapters, scheduled jobs and evidence integration when implementing them, not as empty folders in advance.
