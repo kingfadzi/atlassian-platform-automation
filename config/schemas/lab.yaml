@@ -2,12 +2,31 @@ $schema: https://json-schema.org/draft/2020-12/schema
 title: Synthetic lab intent, not execution authority
 type: object
 additionalProperties: false
-required: [environment, synthetic, profile, deletion_authorized, foundation, assets]
+required: [environment, synthetic, profile, deletion_authorized, bootstrap, foundation, assets]
 properties:
   environment: {const: lab}
   synthetic: {const: true}
   profile: {const: FS-COLLAB-01}
   deletion_authorized: {const: false}
+  bootstrap:
+    type: object
+    additionalProperties: false
+    required: [organization_ref, site_ref, tenancy_mode, required_products, prerequisite_refs]
+    properties:
+      organization_ref: {type: string, minLength: 1}
+      site_ref: {type: string, minLength: 1}
+      tenancy_mode: {const: adopt_existing}
+      required_products:
+        type: array
+        minItems: 2
+        maxItems: 2
+        uniqueItems: true
+        items: {enum: [jira, confluence]}
+      prerequisite_refs:
+        type: array
+        minItems: 4
+        uniqueItems: true
+        items: {$ref: "#/$defs/fixture_ref"}
   foundation:
     type: object
     additionalProperties: false
@@ -24,7 +43,8 @@ properties:
           enum: [identity_policy, sharing_policy, integration_policy, supported_data_placement, monitoring]
   assets:
     type: array
-    minItems: 1
+    minItems: 2
+    maxItems: 2
     items: {$ref: "#/$defs/asset"}
 $defs:
   strings:
@@ -36,14 +56,16 @@ $defs:
   asset:
     type: object
     additionalProperties: false
-    required: [asset_key, kind, business_application_ref, requested_classification, audience_group_refs, authority_refs, managed_properties]
+    required: [asset_key, kind, target_ref, configuration, business_application_ref, requested_classification, audience_group_refs, authority_refs, managed_properties]
     properties:
       asset_key: {type: string, pattern: "^[a-z][a-z0-9-]+$"}
       kind: {enum: [jira_project, confluence_space]}
+      target_ref: {type: string, minLength: 1}
+      configuration: {type: object}
       management_type: {const: company_managed}
       initial_visibility: {const: private}
       business_application_ref: {type: string, minLength: 1}
-      requested_classification: {enum: [Restricted, Confidential, Internal, Public]}
+      requested_classification: {const: Internal}
       audience_group_refs: {$ref: "#/$defs/strings"}
       authority_refs:
         type: object
@@ -61,10 +83,45 @@ $defs:
           required: [management_type]
           properties:
             managed_properties:
-              items: {enum: [permission_scheme, project_roles, classification_default]}
+              const: [permission_scheme]
+            configuration:
+              type: object
+              additionalProperties: false
+              required: [key, name, project_type, template_key, lead_ref, permission_scheme_name, admin_group_refs, audience_permissions]
+              properties:
+                key: {type: string, pattern: "^[A-Z][A-Z0-9]{1,9}$"}
+                name: {type: string, minLength: 1, maxLength: 80}
+                project_type: {const: software}
+                template_key: {const: "com.pyxis.greenhopper.jira:gh-simplified-kanban-classic"}
+                lead_ref: {type: string, minLength: 1}
+                permission_scheme_name: {type: string, minLength: 1}
+                admin_group_refs: {$ref: "#/$defs/strings"}
+                audience_permissions:
+                  type: array
+                  uniqueItems: true
+                  minItems: 4
+                  maxItems: 4
+                  items: {enum: [BROWSE_PROJECTS, CREATE_ISSUES, EDIT_ISSUES, ADD_COMMENTS]}
       - if: {properties: {kind: {const: confluence_space}}}
         then:
           required: [initial_visibility]
           properties:
             managed_properties:
-              items: {enum: [space_access, classification_default, public_link_restriction]}
+              const: [space_access]
+            configuration:
+              type: object
+              additionalProperties: false
+              required: [key, name, admin_group_refs, audience_permissions]
+              properties:
+                key: {type: string, pattern: "^[A-Z][A-Z0-9]{1,30}$"}
+                name: {type: string, minLength: 1, maxLength: 80}
+                admin_group_refs: {$ref: "#/$defs/strings"}
+                audience_permissions:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  uniqueItems: true
+                  items:
+                    oneOf:
+                      - {const: {key: read, target: space}}
+                      - {const: {key: create, target: page}}

@@ -1,9 +1,20 @@
-# Draft intent only. No credentials, native IDs, approval records or live connection.
+# Synthetic intent, not firm approval or proof of actual configuration.
 environment: lab
 synthetic: true
 profile: FS-COLLAB-01
 deletion_authorized: false
+bootstrap:
+  organization_ref: LAB-ORG
+  site_ref: LAB-SITE
+  tenancy_mode: adopt_existing
+  required_products: [jira, confluence]
+  prerequisite_refs:
+    - fixture:bootstrap-custody
+    - fixture:bootstrap-products
+    - fixture:bootstrap-creation-constraints
+    - fixture:bootstrap-identity-and-sharing
 foundation:
+  # Required context. This MVP does not implement the whole foundation.
   parameters: [P-01, P-02, P-06, P-07, P-08, P-09, P-12, P-16, P-18]
   managed_properties:
     - identity_policy
@@ -14,6 +25,7 @@ foundation:
 assets:
   - asset_key: lab-confluence-private
     kind: confluence_space
+    target_ref: LAB-CONFLUENCE
     initial_visibility: private
     business_application_ref: BA-LAB-001
     requested_classification: Internal
@@ -23,9 +35,17 @@ assets:
       ownership: fixture:ownership-lab-001
       classification: fixture:classification-internal-001
       approval: fixture:approval-lab-001
-    managed_properties: [space_access, classification_default, public_link_restriction]
+    managed_properties: [space_access]
+    configuration:
+      key: LABSPACE
+      name: Governed Lab Space
+      admin_group_refs: [GROUP-LAB-ADMINS]
+      audience_permissions:
+        - {key: read, target: space}
+        - {key: create, target: page}
   - asset_key: lab-jira-internal
     kind: jira_project
+    target_ref: LAB-JIRA
     management_type: company_managed
     business_application_ref: BA-LAB-001
     requested_classification: Internal
@@ -35,4 +55,13 @@ assets:
       ownership: fixture:ownership-lab-001
       classification: fixture:classification-internal-001
       approval: fixture:approval-lab-001
-    managed_properties: [permission_scheme, project_roles, classification_default]
+    managed_properties: [permission_scheme]
+    configuration:
+      key: LABJIRA
+      name: Governed Lab Project
+      project_type: software
+      template_key: com.pyxis.greenhopper.jira:gh-simplified-kanban-classic
+      lead_ref: USER-LAB-OWNER
+      permission_scheme_name: lab-jira-internal-v1
+      admin_group_refs: [GROUP-LAB-ADMINS]
+      audience_permissions: [BROWSE_PROJECTS, CREATE_ISSUES, EDIT_ISSUES, ADD_COMMENTS]

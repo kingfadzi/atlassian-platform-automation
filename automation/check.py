@@ -66,6 +66,16 @@ def check_config(config, root=ROOT):
 
     keys = [asset["asset_key"] for asset in config["assets"]]
     require(len(keys) == len(set(keys)), "Duplicate asset key")
+    require(
+        {asset["kind"] for asset in config["assets"]}
+        == {"jira_project", "confluence_space"},
+        "The MVP requires one project and one space",
+    )
+    targets = [
+        (asset["target_ref"], asset["configuration"]["key"])
+        for asset in config["assets"]
+    ]
+    require(len(targets) == len(set(targets)), "Duplicate native key declaration")
 
 
 def check_sources(directory, register):
