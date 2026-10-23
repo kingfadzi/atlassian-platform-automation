@@ -1,0 +1,17 @@
+# Governance gate over Terraform plan JSON. Change rules here, not in Python.
+actions:
+  allowed: [no-op, read, create]      # creation only; the platform never updates or deletes
+  blocked: [update, delete, replace]  # any of these fails the gate
+  import_requires_authority: true     # adopting an existing object needs an adoption record
+drift:
+  delete_blocks: true                 # object vanished (or its read failed): stop, do not recreate
+  report_fields: [api_data, api_response]  # refresh noise, reported only
+checks:
+  failures_block: true                # failed check blocks (drift, probes, tenancy) stop the apply
+review:
+  reviewer_must_not_be_admin: true
+  plan_digest: sha256
+windows_days:
+  attestation: 90
+  authority: 365
+  exception: 30

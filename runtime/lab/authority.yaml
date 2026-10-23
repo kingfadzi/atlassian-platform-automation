@@ -1,0 +1,6 @@
+records:
+  - id: BA-LAB-001
+    kind: authority
+    recorded: 2026-10-20
+    by: USER-LAB-REVIEWER
+adoptions: {}   # address -> authority id, required before any `import` is accepted

@@ -1,0 +1,9 @@
+records:
+  - id: custody
+    kind: attestation
+    recorded: 2026-10-20
+    by: USER-LAB-ADMIN
+  - id: auth_policy
+    kind: attestation
+    recorded: 2026-10-20
+    by: USER-LAB-ADMIN

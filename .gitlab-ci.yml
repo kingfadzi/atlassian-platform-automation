@@ -1,0 +1,106 @@
+# One pipeline, four stages, one Terraform state each. Terraform plans; govern gates; a
+# protected environment with deployment approvals holds the apply. There is no destroy job.
+#
+# Required CI/CD variables (protected + masked): TF_VAR_atlassian_org_api_key,
+# TF_VAR_atlassian_email, TF_VAR_atlassian_api_token, TF_VAR_probe_*; REVIEWER_REF, ADMIN_REF.
+# GitLab-managed state: TF_HTTP_* are derived from the project and stage name below.
+
+image:
+  name: hashicorp/terraform:1.13
+  entrypoint: [""]
+
+variables:
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "0"
+  TF_PLUGIN_CACHE_DIR: "$CI_PROJECT_DIR/.terraform.d/plugin-cache"
+  API_DATA_IS_SENSITIVE: "true"
+  ENV: lab
+
+cache:
+  key: terraform-providers
+  paths: [.terraform.d/plugin-cache]
+
+stages: [validate, plan, gate, apply, operate]
+
+.tf:
+  before_script:
+    - apk add --no-cache python3 py3-yaml >/dev/null
+    - export TF_HTTP_ADDRESS="$CI_API_V4_URL/projects/$CI_PROJECT_ID/terraform/state/$ENV-$STAGE"
+    - export TF_HTTP_LOCK_ADDRESS="$TF_HTTP_ADDRESS/lock" TF_HTTP_UNLOCK_ADDRESS="$TF_HTTP_ADDRESS/lock"
+    - export TF_HTTP_LOCK_METHOD=POST TF_HTTP_UNLOCK_METHOD=DELETE TF_HTTP_RETRY_WAIT_MIN=5
+    - export TF_HTTP_USERNAME=gitlab-ci-token TF_HTTP_PASSWORD="$CI_JOB_TOKEN"
+    - terraform -chdir=stages/$STAGE init
+  resource_group: $ENV-$STAGE          # one run per stage at a time
+
+validate:
+  stage: validate
+  script:
+    - terraform fmt -check -recursive
+    - for s in bootstrap identity admit release; do terraform -chdir=stages/$s init -backend=false && terraform -chdir=stages/$s validate; done
+    - terraform -chdir=tests/intent init && terraform -chdir=tests/intent test
+    - apk add --no-cache python3 py3-yaml py3-pytest >/dev/null && python3 -m pytest -q tests/govern
+
+.plan:
+  extends: .tf
+  stage: plan
+  script:
+    - terraform -chdir=stages/$STAGE plan -out=plan.bin -var-file=../../envs/$ENV/$ENV.tfvars
+    - terraform -chdir=stages/$STAGE show -json plan.bin > stages/$STAGE/plan.json
+    - terraform -chdir=stages/$STAGE show -no-color plan.bin > stages/$STAGE/plan.txt
+  artifacts:
+    paths: [stages/$STAGE/plan.bin, stages/$STAGE/plan.json, stages/$STAGE/plan.txt]
+    expire_in: 7 days
+    access: developer                    # plan output names tenant objects; keep it off public view
+
+.gate:
+  stage: gate
+  image: python:3.12-alpine
+  script:
+    - pip install -q -r requirements.txt
+    - python3 -m govern.cli gate --plan-json stages/$STAGE/plan.json --stage $STAGE --runtime runtime/$ENV --ledger ledger/$ENV.jsonl
+    - python3 -m govern.cli review --plan stages/$STAGE/plan.bin --reviewer "$REVIEWER_REF" --admin "$ADMIN_REF" --out stages/$STAGE/review.json
+  artifacts:
+    paths: [stages/$STAGE/review.json, ledger/]
+    expire_in: 90 days
+
+.apply:
+  extends: .tf
+  stage: apply
+  when: manual
+  environment:
+    name: $ENV/$STAGE                    # protected environment with deployment approvals
+    action: start
+  script:
+    - python3 -m govern.cli verify --plan stages/$STAGE/plan.bin --review stages/$STAGE/review.json
+    - terraform -chdir=stages/$STAGE apply plan.bin
+    - terraform -chdir=stages/$STAGE apply -refresh-only -auto-approve -var-file=../../envs/$ENV/$ENV.tfvars   # persist the read-back shape
+
+# bootstrap and release own nothing: plan + gate is the whole job. identity and admit also apply.
+plan:bootstrap: { extends: .plan, variables: { STAGE: bootstrap } }
+gate:bootstrap: { extends: .gate, variables: { STAGE: bootstrap }, needs: [plan:bootstrap] }
+
+plan:identity: { extends: .plan, variables: { STAGE: identity }, needs: [gate:bootstrap] }
+gate:identity: { extends: .gate, variables: { STAGE: identity }, needs: [plan:identity] }
+apply:identity: { extends: .apply, variables: { STAGE: identity }, needs: [gate:identity] }
+
+plan:admit: { extends: .plan, variables: { STAGE: admit }, needs: [apply:identity] }
+gate:admit: { extends: .gate, variables: { STAGE: admit }, needs: [plan:admit] }
+apply:admit: { extends: .apply, variables: { STAGE: admit }, needs: [gate:admit] }
+
+plan:release: { extends: .plan, variables: { STAGE: release }, needs: [apply:admit] }
+gate:release: { extends: .gate, variables: { STAGE: release }, needs: [plan:release] }
+
+# Operate: scheduled drift run. Refresh-only plans never carry actions; the gate reads checks and drift.
+drift:
+  extends: .tf
+  stage: operate
+  rules: [{ if: $CI_PIPELINE_SOURCE == "schedule" }]
+  parallel:
+    matrix: [{ STAGE: [identity, admit, release] }]
+  script:
+    - terraform -chdir=stages/$STAGE plan -refresh-only -out=plan.bin -var-file=../../envs/$ENV/$ENV.tfvars
+    - terraform -chdir=stages/$STAGE show -json plan.bin > stages/$STAGE/plan.json
+    - python3 -m govern.cli gate --plan-json stages/$STAGE/plan.json --stage $STAGE --runtime runtime/$ENV --ledger ledger/$ENV.jsonl
+  artifacts:
+    paths: [ledger/]
+    when: always

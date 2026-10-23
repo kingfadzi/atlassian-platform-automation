@@ -1,3 +1,4 @@
-# Direct dependencies for offline checks, not the eventual execution runtime.
+# Governance gate, its tests and the stub tenant. Terraform providers are pinned in .terraform.lock.hcl files.
 PyYAML==6.0.3
-jsonschema==4.26.0
+pytest==8.3.3
+flask==3.1.3   # tests/stub only

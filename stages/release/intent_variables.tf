@@ -1,0 +1,1 @@
+../../envs/shared/intent_variables.tf
