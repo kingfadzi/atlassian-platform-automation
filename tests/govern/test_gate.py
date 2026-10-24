@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from govern import currency, gate
+from govern import currency, gate, provenance
 
 ROOT = Path(__file__).resolve().parents[2]
 RULES = yaml.safe_load((ROOT / "policy" / "gate.yaml").read_text())
@@ -51,3 +51,18 @@ def test_foundation_fixture_blocks_mandatory_and_reports_findings():
     assert any("mandatory_controls" in b and "anonymous_jira_closed" in b for b in verdict.blocked)
     assert any("report_controls" in r for r in verdict.reported)
     assert not any("report_controls" in b for b in verdict.blocked)
+
+
+def test_policy_digests_cover_files_and_standards_directory(tmp_path):
+    digests = provenance.policy_digests(ROOT, RULES["policy_files"])
+    assert {"policy/gate.yaml", "policy/foundation.yaml", "policy/intent_rules.yaml",
+            "policy/standards/restricted-collab-v1.yaml"} <= set(digests)
+    changed = tmp_path / "policy"
+    changed.mkdir()
+    (changed / "foundation.yaml").write_text((ROOT / "policy" / "foundation.yaml").read_text() + "# one more byte\n")
+    assert provenance.policy_digests(tmp_path, ["policy/foundation.yaml"])["policy/foundation.yaml"] != digests["policy/foundation.yaml"]
+
+
+def test_plan_policy_versions_read_from_outputs():
+    plan = {"planned_values": {"outputs": {"policy_version": {"value": "2026-10"}, "standard": {"value": {"id": "restricted-collab-v1"}}}}}
+    assert provenance.plan_policy_versions(plan) == {"foundation_catalogue": "2026-10", "standard": "restricted-collab-v1"}
