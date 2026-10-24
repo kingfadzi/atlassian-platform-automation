@@ -11,21 +11,19 @@ from state import caller, db, failing
 
 foundation = Blueprint("foundation", __name__)
 
-@foundation.get("/rest/api/3/project/search")
-def project_search():
-    public = [{"id": "1", "key": "PUB", "name": "Public"}] if "anonymous_jira_closed" in failing else []
-    visible = public if caller() == "anonymous" else [{k: v for k, v in p.items() if k != "_scheme"} for p in db["projects"].values()]
-    return jsonify({"values": visible, "total": len(visible), "isLast": True})
 
-
-@foundation.get("/rest/api/3/permissionscheme")
-def list_schemes():
-    schemes = list(db["schemes"].values())
+def default_scheme():
+    """Jira's built-in scheme: browse for every licensed user. Projects JSM did not create sit on it."""
     default = {"id": 0, "name": "Default Permission Scheme", "permissions": [
         {"id": 1, "permission": "BROWSE_PROJECTS", "holder": {"type": "applicationRole"}}]}
     if "no_public_scheme_grants" in failing:
         default["permissions"].append({"id": 2, "permission": "BROWSE_PROJECTS", "holder": {"type": "anyone"}})
-    return jsonify({"permissionSchemes": [default] + schemes})
+    return default
+
+
+@foundation.get("/rest/api/3/permissionscheme")
+def list_schemes():
+    return jsonify({"permissionSchemes": [default_scheme()] + list(db["schemes"].values())})
 
 
 @foundation.get("/admin/v1/orgs/<org>/events")

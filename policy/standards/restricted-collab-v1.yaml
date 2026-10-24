@@ -28,6 +28,11 @@ confluence:
   space_roles: { admin: Admin, lead: Manager, member: Collaborator, viewer: Viewer }
   audience_operations: [read]          # used until space role assignment replaces granular grants
 
+lifecycle:                  # windows stages/conform applies to instances of this standard (days)
+  inactive_days: 90         # no issue or page activity for this long: flagged
+  abandoned_days: 180       # inactive this long, or no admin group bound: eligible for archive
+  review_days: 365          # owner review due (JSM review request; phase 3)
+
 description_template: "${business_authority} | ${standard} | ${classification} | managed by platform automation"
 
 release:

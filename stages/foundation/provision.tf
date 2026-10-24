@@ -9,6 +9,7 @@ locals {
   role_keys      = distinct(flatten([for s in local.standards : s.roles]))
   role_names     = { for r in local.role_keys : r => replace(local.rules.role_name_template, "{role}", r) }
   identities     = yamldecode(file("${path.module}/../../policy/identities.yaml"))
+  conformance    = yamldecode(file("${path.module}/../../policy/conformance.yaml"))
 }
 
 module "role" {
@@ -38,4 +39,29 @@ output "role_ids" {
 output "scheme_ids" {
   description = "standard id => permission scheme id; admit attaches projects to these."
   value       = { for s, m in module.scheme : s => m.id }
+}
+
+# The contract JSM needs to create instances from the templates, and the stamp it must set so
+# stages/conform can tell which template an instance belongs to. Written to contracts/<env>.json
+# by the pipeline after apply; nothing in it is secret.
+output "contract" {
+  value = {
+    standards = { for id, s in local.standards : id => {
+      scheme_id     = module.scheme[id].id
+      roles         = { for r in s.roles : r => module.role[r].id }
+      project_types = s.jira.project_types
+      space_roles   = s.confluence.space_roles
+    } }
+    group_pattern = var.tenant.group_pattern
+    stamp         = local.conformance.stamp
+  }
+}
+
+resource "terraform_data" "standards_are_versioned" {
+  lifecycle {
+    precondition {
+      condition     = alltrue([for id in keys(local.standards) : can(regex(local.rules.standard_id_pattern, id))])
+      error_message = "Every file in policy/standards must be named <id>-v<n>.yaml (policy/intent_rules.yaml)."
+    }
+  }
 }

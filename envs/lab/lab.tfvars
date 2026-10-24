@@ -1,53 +1,12 @@
-# Intent for the personal lab. This is the file operators edit. No secrets here: credentials
-# arrive as TF_VAR_* variables from the pipeline (see envs/shared/credentials.tf).
+# The personal lab tenant. This is the only per-environment file operators edit; no secrets
+# (credentials arrive as TF_VAR_* from the pipeline) and no instances (projects, spaces, groups
+# and people are JSM and AD concerns; the engine only judges them).
 
 tenant = {
-  org_id       = "ORG-LAB"                   # Atlassian organisation id (admin.atlassian.com URL)
-  directory_id = "DIR-LAB"                   # directory id from stages/bootstrap output
-  site_url     = "https://lab.atlassian.net" # Jira and Confluence site
-  scope_regex  = "^lab-"                     # every managed group name must match
-}
-
-groups = {
-  lab-admins    = "LAB administrators"
-  lab-team      = "LAB team"
-  lab-outsiders = "LAB outsiders (negative probe only)"
-}
-
-jira = {
-  project = {
-    key             = "LABR"
-    name            = "LAB Restricted"
-    type            = "software"
-    template        = "com.pyxis.greenhopper.jira:gh-simplified-kanban-classic"
-    lead_account_id = "USER-LAB-ADMIN"
-    roles = { # role keys come from the standard; groups are bound per asset
-      admin  = ["lab-admins"]
-      member = ["lab-team"]
-    }
-  }
-}
-
-confluence = {
-  space = {
-    key             = "LABP"
-    name            = "LAB Private"
-    audience_groups = ["lab-admins", "lab-team"]
-  }
-}
-
-governance = {
-  business_authority = "BA-LAB-001"
-  classification     = "Internal"
-  standard           = "restricted-collab-v1"
-  authority_records  = ["AUTH-APP-01", "OWN-01", "CLS-01", "APR-01"]
-}
-
-identities = {
-  admin    = "USER-LAB-ADMIN"
-  reviewer = "USER-LAB-REVIEWER"
-  allowed  = "USER-LAB-ALLOWED"
-  denied   = "USER-LAB-DENIED"
+  org_id        = "ORG-LAB"                   # Atlassian organisation id (admin.atlassian.com URL)
+  directory_id  = "DIR-LAB"                   # directory id from stages/bootstrap output
+  site_url      = "https://lab.atlassian.net" # Jira and Confluence site
+  group_pattern = "^lab-"                     # AD-managed groups that may hold a role on an instance
 }
 
 foundation = {

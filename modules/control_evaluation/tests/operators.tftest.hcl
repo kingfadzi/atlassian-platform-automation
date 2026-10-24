@@ -3,7 +3,7 @@
 
 variables {
   now    = "2026-10-24T12:00:00Z"
-  intent = { "foundation.domains" = ["lab.example"], "foundation.none" = [] }
+  intent = { "foundation.domains" = ["lab.example"], "foundation.none" = [], "standard.days" = 7 }
   facts = {
     count_zero  = { known = true, value = 0 }
     count_two   = { known = true, value = 2 }
@@ -32,6 +32,8 @@ variables {
       { id = "contains_pass", mandatory = false, depends = ["jira"], fact = "text", require = { op = "contains", value = "governed" } },
       { id = "from_intent", mandatory = false, depends = ["jira"], fact = "some_list", require = { op = "superset_of", value_from = "foundation.domains" } },
       { id = "from_empty_intent", mandatory = true, depends = ["jira"], fact = "some_list", require = { op = "subset_of", value_from = "foundation.none" } },
+      { id = "from_number_intent", mandatory = false, depends = ["jira"], fact = "stale_time", require = { op = "within_days", value_from = "standard.days" } },
+      { id = "from_missing_intent", mandatory = false, depends = ["jira"], fact = "stale_time", require = { op = "within_days", value_from = "standard.absent" } },
       { id = "unknown_fact", mandatory = false, depends = ["jira"], fact = "unreadable", require = { op = "equals", value = 0 } },
       { id = "na", mandatory = true, depends = ["jira"], fact = "count_two", require = { op = "equals", value = 0 }, lab = "not_applicable" },
     ]
@@ -45,7 +47,8 @@ run "verdicts" {
       eq_pass       = "pass", eq_fail = "fail", empty_pass = "pass", empty_fail = "fail", at_least_pass = "pass",
       within_pass   = "pass", within_fail = "fail", fresh = "attested", old = "fail",
       superset_pass = "pass", subset_fail = "fail", contains_pass = "pass",
-      from_intent   = "fail", from_empty_intent = "not_applicable", unknown_fact = "unknown", na = "not_applicable",
+      from_intent   = "fail", from_empty_intent = "not_applicable", from_number_intent = "fail", from_missing_intent = "not_applicable",
+      unknown_fact  = "unknown", na = "not_applicable",
     }
     error_message = "Unexpected verdicts: ${jsonencode(output.verdict)}"
   }
@@ -54,8 +57,8 @@ run "verdicts" {
     error_message = "All mandatory controls pass here, so both products must be ready."
   }
   assert {
-    condition     = length(output.findings) == 7
-    error_message = "Seven non-mandatory controls fail or are unknown here: ${jsonencode(output.findings)}"
+    condition     = length(output.findings) == 8
+    error_message = "Eight non-mandatory controls fail or are unknown here: ${jsonencode(output.findings)}"
   }
 }
 

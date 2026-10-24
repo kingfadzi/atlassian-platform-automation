@@ -29,11 +29,15 @@ vocabulary at the top of that file, and then usable from YAML. Nothing else move
 - `policy/foundation.yaml`: the shared foundation catalogue. Each control names a `fact` and a
   `require` (`op` plus `value` or `value_from`), with `mandatory`, `depends`, `register`,
   `effective_from` and an optional `lab: not_applicable`.
-- `policy/standards/<id>.yaml`: an asset standard, selected by `governance.standard` in the
-  intent. Permission sets, operations, assignee type, project types, the description template and
-  the release probe expectations live here. Modules carry no policy defaults.
-- `policy/intent_rules.yaml`: structural rules the intent must satisfy, read by the variable
-  validations (admitted classifications, patterns, subset and declaration rules, distinct identities).
+- `policy/standards/<id>.yaml`: a template. Roles, per-role grants, space roles, project types,
+  lifecycle windows and the description template live here. The foundation provisions one scheme
+  per standard from it; `conform` judges instances against it. Modules carry no policy defaults.
+- `policy/conformance.yaml`: what every instance must satisfy, the rung (`report`, `flag`,
+  `restrict`, `archive`) for each failing control, how instances name their template (`stamp`) and
+  what counts as public access.
+- `policy/identities.yaml`: the exceptional identities (admin, engine, emergency) with owner, scope
+  and review date; `admins_are_listed` and `exceptional_identities_reviewed` read it.
+- `policy/intent_rules.yaml`: naming rules for what the engine provisions (standard ids, role names).
 - `policy/gate.yaml`: what the gate blocks or reports, the currency windows, and `policy_files`.
 
 Every file has a `version` or `effective_from` and a `register` reference where one exists, so a
@@ -43,8 +47,10 @@ change can be traced to the register entry that caused it.
 
 Eight, and the set is a ceiling: `equals`, `empty`, `at_least`, `within_days`,
 `attested_within_days`, `superset_of`, `subset_of`, `contains`. `value_from` takes the required
-value from the intent's `foundation` object instead of a literal; when it resolves to an empty
-list the control is `not_applicable` because the intent has nothing to require. A fact that could
+value from the stage's intent map instead of a literal (`foundation.*` from tfvars, `policy.*`
+derived from the policy files, `standard.*` and `tenant.*` per instance in `conform`); when it
+resolves to null or an empty collection the control is `not_applicable` because there is nothing
+to require. A number is always applicable. A fact that could
 not be read gives `unknown`, which counts as unsatisfied for a mandatory control. When a requirement
 cannot be stated with these operators the review question is "which fact is missing", not "which
 operator should we add". A catalogue naming a fact that is not observed, or an operator outside the
@@ -54,7 +60,7 @@ eight, fails at plan time.
 
 Every ledger entry written by `govern gate` records the sha256 of each file listed in
 `policy_files` (the standards directory contributes every file in it) and the policy versions the
-plan published (`policy_version` from foundation, `standard` from admit). A later change to any
+plan published (`policy_version` from foundation). A later change to any
 requirement shows as a different hash; review records stay bound to the rules of the day.
 
 ## Lifecycle of a requirement
@@ -64,7 +70,7 @@ requirement shows as a different hash; review records stay bound to the rules of
 - Tightened or relaxed requirement: edit `value`, `mandatory` or the window; the catalogue `version`
   (a date, `YYYY-MM`) moves with it.
 - New or changed standard: a new file with `supersedes`; the old file stays in `policy/standards/`
-  so assets admitted under it remain explainable.
+  so instances created under it remain explainable; `conform` reports them as `standard_current` findings.
 - `effective_from` annotates when a requirement took effect; it does not schedule or hide a control.
 
 ## What is deliberately not here

@@ -13,7 +13,7 @@ review:
   reviewer_must_not_be_admin: true
   plan_digest: sha256
 windows_days:
-  foundation: 7                       # admit needs a foundation evaluation newer than this
+  foundation: 7                       # conform needs a foundation evaluation newer than this
   attestation: 90
   authority: 365
   exception: 30
@@ -22,4 +22,5 @@ policy_files:                         # hashed into every ledger entry so decisi
   - policy/foundation.yaml
   - policy/intent_rules.yaml
   - policy/identities.yaml
+  - policy/conformance.yaml
   - policy/standards                  # a directory: every standard file is hashed

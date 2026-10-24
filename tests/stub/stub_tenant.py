@@ -6,8 +6,9 @@ import sys
 
 from flask import Flask, jsonify, request
 
-from foundation_endpoints import foundation
+from foundation_endpoints import default_scheme, foundation
 from provision_endpoints import provision
+from estate_endpoints import estate
 from state import DIRECTORY, caller, db, failing, ids
 
 app = Flask(__name__)
@@ -28,28 +29,6 @@ def workspaces(org):
     return jsonify({"data": [{"id": "ws-1", "attributes": {"typeKey": "jira-software", "hostUrl": host}},
                              {"id": "ws-2", "attributes": {"typeKey": "confluence", "hostUrl": host}}], "links": {}})
 
-
-@app.get("/admin/v2/orgs/<org>/directories/<directory>/groups")
-def search_groups(org, directory):
-    term = request.args.get("searchTerm", "")
-    found = [g for g in db["groups"].values() if term.lower() in g["name"].lower()]
-    return jsonify({"data": found, "links": {"self": "x"}})
-
-
-@app.post("/admin/v2/orgs/<org>/directories/<directory>/groups")
-def create_group(org, directory):
-    body = request.get_json()
-    group = {"id": f"g-{next(ids)}", "name": body["name"], "description": body.get("description", ""),
-             "directoryId": directory, "managementAccess": {"deletable": True, "modifiable": True, "readable": True},
-             "externalSynced": False, "managedBy": "atlassian", "counts": {"users": 0, "resources": 0}}
-    db["groups"][group["id"]] = group
-    return ("", 201)                                  # real API documents 201 "Success" with no body
-
-
-@app.get("/admin/v2/orgs/<org>/directories/<directory>/groups/<gid>")
-def get_group(org, directory, gid):
-    group = db["groups"].get(gid)
-    return (jsonify({"data": group}), 200) if group else ("", 404)
 
 # Jira
 @app.get("/rest/api/3/myself")
@@ -94,49 +73,17 @@ def get_grant(sid, pid):
     return (jsonify(found), 200) if found else ("", 404)
 
 
-@app.post("/rest/api/3/project")
-def create_project():
-    body = request.get_json()
-    project = {"id": next(ids), "key": body["key"], "name": body["name"], "projectTypeKey": body["projectTypeKey"],
-               "assigneeType": body.get("assigneeType"), "description": body.get("description", ""),
-               "lead": {"accountId": body["leadAccountId"]}, "self": "x", "simplified": False, "style": "classic"}
-    db["projects"][project["key"]] = {**project, "_scheme": body["permissionScheme"]}
-    return jsonify({"id": project["id"], "key": project["key"], "self": "x"}), 201
-
-
-@app.get("/rest/api/3/project/<key>")
-def get_project(key):
-    if caller() == "anonymous":
-        return ("", 401)
-    project = next((p for p in db["projects"].values() if key in (p["key"], str(p["id"]))), None)
-    if not project or caller() == "denied":
-        return ("", 404)
-    return jsonify({k: v for k, v in project.items() if k != "_scheme"})
-
-
 @app.get("/rest/api/3/project/<key>/permissionscheme")
 def project_scheme(key):
     project = next((p for p in db["projects"].values() if key in (p["key"], str(p["id"]))), None)
-    return jsonify(db["schemes"][project["_scheme"]]) if project else ("", 404)
+    if not project:
+        return ("", 404)
+    return jsonify(db["schemes"].get(project["_scheme"]) or default_scheme())
 
 # Confluence
 @app.get("/wiki/rest/api/user/current")
 def current_user():
     return jsonify({"accountId": "acc-admin", "type": "known"})
-
-
-@app.post("/wiki/rest/api/space/_private")
-def create_space():
-    body = request.get_json()
-    space = {"id": next(ids), "key": body["key"], "name": body["name"], "type": "global", "status": "current"}
-    db["spaces"][space["id"]] = space
-    return jsonify(space)
-
-
-@app.get("/wiki/api/v2/spaces/<int:sid>")
-def get_space(sid):
-    space = db["spaces"].get(sid)
-    return (jsonify({**space, "homepageId": "1", "authorId": "acc-admin"}), 200) if space else ("", 404)
 
 
 @app.get("/wiki/api/v2/spaces")
@@ -146,14 +93,6 @@ def list_spaces():
         return jsonify({"results": [{"id": "9", "key": "PUB", "name": "Public"}], "_links": {}})
     visible = [] if caller() in ("anonymous", "denied") else [s for s in db["spaces"].values() if s["key"] in keys or not keys[0]]
     return jsonify({"results": visible, "_links": {}})
-
-
-@app.post("/wiki/rest/api/space/<key>/permission")
-def add_permission(key):
-    body = request.get_json()
-    perm = {"id": next(ids), "subject": body["subject"], "operation": body["operation"]}
-    db["space_perms"].setdefault(key, []).append(perm)
-    return jsonify(perm)
 
 
 @app.get("/wiki/api/v2/spaces/<int:sid>/permissions")
@@ -180,6 +119,7 @@ def dump():
 
 app.register_blueprint(foundation)
 app.register_blueprint(provision)
+app.register_blueprint(estate)
 
 if __name__ == "__main__":
     app.run(port=int(sys.argv[1]) if len(sys.argv) > 1 else 8089)

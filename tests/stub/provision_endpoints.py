@@ -31,14 +31,6 @@ def get_role(rid):
     return (jsonify(role), 200) if role else ("", 404)
 
 
-@provision.post("/rest/api/3/project/<key>/role/<int:rid>")
-def add_actors(key, rid):
-    body = request.get_json()
-    groups = db["role_actors"].setdefault((key, rid), [])
-    groups.extend(g for g in body.get("group", []) if g not in groups)
-    return jsonify(project_role(key, rid)), 200
-
-
 @provision.get("/rest/api/3/project/<key>/role/<int:rid>")
 def get_project_role(key, rid):
     if rid not in db["roles"]:
@@ -48,7 +40,8 @@ def get_project_role(key, rid):
 
 def project_role(key, rid):
     role = db["roles"][rid]
-    actors = [{"id": i, "displayName": g, "name": g, "type": "atlassian-group-role-actor"} for i, g in enumerate(db["role_actors"].get((key, rid), []))]
+    actors = [{"id": i, "displayName": g.removeprefix("user:"), "name": g, "type": "atlassian-user-role-actor" if g.startswith("user:") else "atlassian-group-role-actor"}
+              for i, g in enumerate(db["role_actors"].get((key, rid), []))]
     return {"id": rid, "name": role["name"], "description": role["description"], "self": "x", "actors": actors}
 
 

@@ -1,0 +1,102 @@
+# Estate conformance: what every instance (Jira project, Confluence space) must satisfy and what
+# happens when it does not. Instances are created by JSM from the templates; this file is the
+# only place "compliant" is defined for them. Each control is a fact, a requirement and a rung:
+#
+#   fact      a per-instance observation from stages/conform/facts.tf (vocabulary listed there)
+#   require   { op, value } or { op, value_from } with value_from in standard.* or tenant.*
+#   depends   [jira] applies to projects, [confluence] to spaces
+#   action    report   finding in the conform output and the gate ledger
+#             flag     comment and status on the instance's Asset record in JSM (phase 3)
+#             restrict remove or re-attach an engine-owned setting, as a gated apply (phase 4)
+#             archive  archive the instance after the window, as a gated apply (phase 4)
+#
+# Delete is not a rung. Until the flag, restrict and archive executors exist (phases 3 and 4)
+# they appear in the output as planned actions and the engine performs report only.
+version: 2026-10
+owner: PLATFORM-GOV
+
+stamp:                                        # how an instance names its template
+  jira_property: platform.standard            # project property, value = standard id
+  confluence_label_prefix: platform-standard- # space label: platform-standard-<id>
+fallback_standard: restricted-collab-v1       # judged against this when the stamp is missing and the scheme is unknown
+enabled_actions: [report]                     # rungs the engine may perform in this environment
+public:                                       # what counts as public access on an instance
+  jira_holder_types: [applicationRole, anyone]
+  confluence_principal_types: [anonymous]
+  confluence_groups: [confluence-users]
+
+controls:
+  - id: stamped_with_standard
+    title: Instance names the template it was created from
+    depends: [jira, confluence]
+    fact: stamp
+    require: { op: equals, value: true }
+    action: flag
+
+  - id: standard_current
+    title: Instance is on a standard that has not been superseded
+    depends: [jira, confluence]
+    fact: standard_superseded
+    require: { op: equals, value: false }
+    action: report
+
+  - id: on_standard_scheme
+    title: Project uses the standard's permission scheme
+    register: [SSCF-ACC-03]
+    depends: [jira]
+    fact: scheme_id
+    require: { op: equals, value_from: standard.scheme_id }
+    action: restrict
+
+  - id: roles_bound_to_groups_only
+    title: Platform roles are held by groups, never by individual users
+    register: [SSCF-ACC-01]
+    depends: [jira]
+    fact: user_actors
+    require: { op: empty }
+    action: flag
+
+  - id: groups_match_ad_pattern
+    title: Every group bound to a platform role is an AD-managed group
+    register: [SSCF-ACC-01]
+    depends: [jira]
+    fact: groups_outside_pattern
+    require: { op: empty }
+    action: flag
+
+  - id: admin_role_bound
+    title: At least one group holds the admin role (somebody is accountable)
+    depends: [jira]
+    fact: admin_group_count
+    require: { op: at_least, value: 1 }
+    action: flag
+
+  - id: lead_is_active
+    title: Project lead is an active account
+    depends: [jira]
+    fact: lead_active
+    require: { op: equals, value: true }
+    action: flag
+
+  - id: recently_active
+    title: Instance has had activity within the standard's window
+    depends: [jira, confluence]
+    fact: last_activity
+    require: { op: within_days, value_from: standard.lifecycle.inactive_days }
+    action: flag
+
+  - id: space_uses_roles
+    title: Space access is through space roles, with the admin role assigned
+    register: [SSCF-ACC-03]
+    depends: [confluence]
+    fact: space_role_names
+    require: { op: superset_of, value_from: standard.space_required_roles }
+    action: flag
+
+  - id: no_public_access
+    title: No anonymous or all-licensed-users access to the instance
+    register: [SSCF-EXP-01]
+    depends: [jira, confluence]
+    fact: public_principals
+    require: { op: empty }
+    action: restrict

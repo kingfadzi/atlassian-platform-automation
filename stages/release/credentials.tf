@@ -1,1 +1,0 @@
-../../envs/shared/credentials.tf

@@ -1,73 +1,82 @@
 # Atlassian platform automation
 
-Terraform owns state, diff, plan files, import and drift; the generic REST provider owns HTTP;
-GitLab owns approvals and scheduling. The only Python is `govern/`, which gates plan JSON on the
-rules in `policy/gate.yaml`. Nothing is ever deleted or updated by automation: `prevent_destroy`
-on every resource, blocked actions in the gate, and no destroy job in the pipeline.
+A desired-state controller for an Atlassian Cloud estate. GRC policy becomes YAML rules here; the
+engine provisions and converges the platform (foundation settings, site-wide roles, one permission
+scheme per standard) and judges every instance JSM creates from those templates. Terraform owns
+state, diff, plan files and drift; the generic REST provider owns HTTP; GitLab owns approvals and
+scheduling. The only Python is `govern/`, which gates plan JSON on `policy/gate.yaml`. Nothing is
+ever deleted or updated by automation: `prevent_destroy` on every resource, blocked actions in the
+gate, no destroy job. The repo holds no instance: no project, space, group or person.
 
 | You want to | Edit |
 |---|---|
-| Add or rename a group, asset or audience | `envs/lab/lab.tfvars` |
-| Change a structural rule (classification, patterns, subsets) | `policy/intent_rules.yaml` |
-| Change what an asset standard grants or expects | `policy/standards/<id>.yaml` (a changed standard is a new file with `supersedes`) |
+| Change what the foundation must look like | `policy/foundation.yaml` (`fact`, `require`, `provision`, `mandatory`) |
+| Change a template: roles, grants, project types, lifecycle windows | `policy/standards/<id>.yaml` (a changed standard is a new file with `supersedes`) |
+| Change what an instance must satisfy, or what happens when it does not | `policy/conformance.yaml` (`controls`, `action`, `enabled_actions`) |
+| Change who may hold admin, engine or emergency access | `policy/identities.yaml` |
 | Change what the gate blocks or reports | `policy/gate.yaml` |
-| Add, retire, tighten or re-scope a shared foundation control | `policy/foundation.yaml` (`fact` + `require` + `provision`) |
-| Change the role set or what each role may do | `policy/standards/<id>.yaml` (`roles`, `jira.role_permissions`, `confluence.space_roles`) |
-| Add or review an admin, engine or emergency account | `policy/identities.yaml` |
 | Do a console-only foundation step and record it | `docs/runbook-foundation.md`, then `runtime/<env>/attestations.yaml` |
-| Read a new property of the tenant | one fact block in `stages/foundation/facts.tf` (plus its `data "http"` in `observe.tf`) |
-| Record a manual foundation setting | `runtime/<env>/attestations.yaml` |
-| Add a resource kind | a new folder under `modules/` with one `restapi_object`, a `check`, and a stage wiring |
-| Add an observation or probe | a `data "http"` plus a `check` in `stages/bootstrap` or `stages/release` |
+| Point at a tenant | `envs/<env>/<env>.tfvars`: organisation, directory, site URL, AD group pattern |
+| Read a new property of the tenant or of an instance | one fact block in `stages/foundation/facts.tf` or `stages/conform/facts.tf` (plus its `data "http"`) |
+| Add a provisioned resource kind | a new folder under `modules/` with one `restapi_object` and a `check`, wired in `stages/foundation/provision.tf` |
 
 ## Layout
 
 ```
-envs/lab/lab.tfvars            intent (operator surface, no secrets)
-envs/shared/*.tf               intent shape and validations (rules read from policy/), providers, credentials, backend; symlinked into stages
-stages/{bootstrap,identity,foundation,admit,release}   one root module and one GitLab state each
-stages/foundation/provision.tf what the engine provisions from policy: site-wide roles, one scheme per standard
-stages/foundation/facts.tf     how each tenant property is read; the fact vocabulary the catalogue may use
-modules/*                      directory_group, jira_project_role, jira_permission_scheme, jira_project, jira_project_role_actors, confluence_space, confluence_space_permission
-modules/control_evaluation     generic fact-versus-requirement evaluation (no control ids inside; own terraform tests)
-policy/gate.yaml               gate rules, currency windows, policy files hashed into the ledger
+envs/lab/lab.tfvars            tenant coordinates (operator surface, no secrets, no instances)
+envs/shared/*.tf               input shape and validations (rules read from policy/), providers, credentials, backend; symlinked into stages
+stages/bootstrap               observe tenancy, products and the engine identity
+stages/foundation              provision.tf (roles, scheme per standard, contract) -> observe.tf -> facts.tf -> evaluate.tf -> readiness
+stages/conform                 observe every project and space -> facts.tf -> evaluate.tf (per instance) -> findings and planned actions
+modules/                       jira_project_role, jira_permission_scheme, control_evaluation (generic fact-versus-requirement, own tests)
 policy/foundation.yaml         shared foundation catalogue: per control a fact, a requirement and who provisions it
-policy/standards/<id>.yaml     asset standards (roles, role grants, operations, templates, probe expectations)
+policy/standards/<id>.yaml     templates: roles, per-role grants, space roles, project types, lifecycle windows
+policy/conformance.yaml        instance controls, the action rung per control, stamp and public-access definitions
 policy/identities.yaml         exceptional identities: admin, engine and emergency accounts with owner and review date
-policy/intent_rules.yaml       structural rules the intent must satisfy
-govern/                        gate, currency, review, provenance, cli (about 240 lines)
-docs/policy-as-data.md         the three-layer rule: requirements, facts, evaluation
-docs/runbook-foundation.md     console-only steps, how to attest them, recovery of provisioned settings
-tests/intent                   terraform test for the intent rules (no tenant needed)
+policy/intent_rules.yaml       naming rules for what the engine provisions
+policy/gate.yaml               gate rules, currency windows, policy files hashed into the ledger
+govern/                        gate, currency, review, provenance, cli
+docs/                          policy-as-data.md, runbook-foundation.md, conformance.md
+runtime/<env>/                 attestations, authority, exceptions (outside Git in anything but the lab)
+contracts/<env>.json           written by the pipeline after the foundation apply; what JSM reads to create instances
+tests/intent                   terraform test for the input rules (no tenant needed)
 tests/govern                   gate unit tests on recorded plan JSON
-tests/stub, tests/spike.sh     stateful stub of the Atlassian endpoints and the end-to-end spike
+tests/stub, tests/spike.sh     stateful stub of the tenant (and of JSM, via seed_estate.py) and the end-to-end spike
 ```
 
 ## Lifecycle
 
-bootstrap (observe tenancy) → identity (groups) → foundation (provision roles and schemes, then probe,
-observe, attest) → admit (project on the standard's scheme, groups bound to roles, space) → release
-(allowed/denied/anonymous probes) → operate (scheduled drift).
-Foundation publishes `ready = { jira, confluence }`; admit reads it through `terraform_remote_state`
-and refuses to plan a product's assets unless that product is ready and the evaluation is newer than
-`windows_days.foundation`. A failing mandatory control blocks only the products that depend on it.
-Lab mandatory core: anonymous Jira closed, anonymous Confluence closed, no public scheme grants,
-audit collection live, public links attested off, plus the provisioned foundation (roles, scheme per
-standard and its grants, Confluence space roles), native project and space creation closed, and
-exceptional identities listed and reviewed. The other ten controls are reported, not blocking.
-Each control says who makes it true (`provision: engine | runbook | external`); the engine never
-takes its own apply as proof and reads everything back from the tenant.
+bootstrap (observe tenancy) → foundation (provision templates, then probe, observe, attest; publish
+`ready` and `contract`) → conform (discover instances, classify by stamp or scheme, evaluate, act by
+rule) → operate (scheduled: foundation drift and estate conformance, gate writes the ledger).
 
-Requirements are data and will change; see `docs/policy-as-data.md`. A control is a fact plus a
-requirement in `policy/foundation.yaml`; an asset standard is a file in `policy/standards/`; the
-HCL that evaluates them knows no control by name. Every gate decision records the hashes of the
-policy files it was made under.
+Every foundation control says who makes it true: `engine` (provisioned here from policy), `runbook`
+(console only, done once by a named operator and attested, see `docs/runbook-foundation.md`) or
+`external` (identity provider, AD, Atlassian rollout; verified only). An apply is never proof: what the
+engine creates is read back from the tenant and judged like any other fact. Lab mandatory core:
+anonymous Jira and Confluence closed, no public scheme grants, audit collection live, public links
+attested off, the provisioned templates present and complete, Confluence space roles available, native
+project and space creation closed, exceptional identities listed and reviewed. Ten further controls
+are reported, not blocking.
+
+Instances are created by JSM from the templates: the request creates the project on the standard's
+scheme, binds each platform role to an AD group and stamps the standard id (`platform.standard`
+project property, `platform-standard-<id>` space label). `conform` finds every instance, judges it
+against `policy/conformance.yaml` and the values of its standard, and assigns the failing controls a
+rung: `report`, `flag`, `restrict` or `archive`. Delete is not a rung. Only `report` has an executor
+so far; the others appear as planned actions until phases 3 and 4.
+
+Requirements are data and will change; see `docs/policy-as-data.md` and `docs/conformance.md`. The
+HCL that evaluates them knows no control, standard or instance by name. Every gate decision records
+the hashes of the policy files it was made under.
 
 ## Local
 
 ```
-make check                     fmt, validate, terraform test (intent rules, evaluation operators), gate tests
-make spike                     every stage against the stub: create, three clean re-plans, drift, out-of-band removal detected and recovered, foundation block, YAML-only policy change, destroy refusal
+make check                     fmt, validate, terraform test (input rules, evaluation operators), gate tests
+make spike                     bootstrap, foundation and conform against the stub: create, three clean re-plans, drift reported,
+                               removed grant detected and recovered, ten seeded instances judged, stale foundation refused,
+                               YAML-only changes flip readiness and a verdict, removal from policy refused
 ```
 
 ## Lab tenant
@@ -76,16 +85,22 @@ What you need from the tenant, once:
 
 - Organisation id and an organisation API key: admin.atlassian.com > Settings > API keys (the org id is in the URL).
 - Directory id: run the bootstrap stage; its `directory_ids` output lists them.
-- An API token for the automation identity (id.atlassian.com > Security > API tokens) and one each for the allowed and denied probe identities.
-- The automation identity's `accountId` for `lead_account_id`: bootstrap output `automation_account_id`.
-
+- An API token for the engine identity (id.atlassian.com > Security > API tokens).
+- The console-only steps in `docs/runbook-foundation.md`, recorded in `runtime/lab/attestations.yaml`.
 
 Set `tenant` in `envs/lab/lab.tfvars` from the bootstrap output, export the credentials as
 `TF_VAR_*`, then run the pipeline. Locally: `terraform -chdir=stages/bootstrap plan -var-file=../../envs/lab/lab.tfvars`
 with a `backend_override.tf` for local state.
 
+## Known limit
+
+Mastercard/restapi 3.0.0 does not drop an object from state when the tenant answers 404 on refresh
+([issue 377](https://github.com/Mastercard/terraform-provider-restapi/issues/377)). Deletions of
+provisioned objects are therefore detected from the tenant read (`scheme_grants_match_standards`,
+`roles_match_standards`, `scheme_per_standard_present`) and recovered as described in the runbook.
+
 ## Requirements and controls
 
 Requirements, the control register and the FS-COLLAB-01 profile live in `kingfadzi/atlassian-cloud`.
 The embedded-Python MVP that preceded this implementation is in this repository's history up to
-commit 5318656.
+commit 5318656; the per-asset admit and release stages up to commit 94fad8b.

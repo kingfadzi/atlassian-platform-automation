@@ -14,7 +14,7 @@ locals {
 
   verdict = { for id, c in local.by_id : id => (
     try(c.lab, "") == "not_applicable" ? "not_applicable" :
-    try(c.require.value_from, null) != null && try(length(local.required[id]), 0) == 0 ? "not_applicable" :
+    try(c.require.value_from, null) != null && (local.required[id] == null || try(length(local.required[id]), 1) == 0) ? "not_applicable" :
     !local.fact[id].known ? "unknown" :
     c.require.op == "equals" ? (local.fact[id].value == local.required[id] ? "pass" : "fail") :
     c.require.op == "empty" ? (length(local.fact[id].value) == 0 ? "pass" : "fail") :

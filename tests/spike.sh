@@ -1,49 +1,78 @@
 #!/usr/bin/env bash
-# Spike: run every stage against the stub tenant with local state and prove
-#   create -> three plans with no changes, out-of-band change -> check failure, no destroy.
-# Usage: tests/spike.sh [terraform-binary]
+# End-to-end proof against the stub tenant: bootstrap -> foundation -> conform with local state.
+# Proves: create then three clean re-plans; out-of-band drift reported with no actions; a removed
+# provisioned grant detected from the tenant and recovered; every seeded instance defect found
+# by conform with no actions; conform refuses a stale foundation; a YAML-only change flips a
+# verdict; a removal from configuration is refused. Run with: make spike
 set -euo pipefail
-TF=${1:-terraform}
-ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TF="${1:-terraform}"
 PORT=8089
 export TF_IN_AUTOMATION=1 TF_INPUT=0
 export TF_VAR_atlassian_org_api_key=stub TF_VAR_atlassian_email=admin@lab TF_VAR_atlassian_api_token=stub
 export TF_VAR_admin_api_url="http://127.0.0.1:$PORT/admin"
-export TF_VAR_probe_allowed_email=allowed@lab TF_VAR_probe_allowed_token=stub
-export TF_VAR_probe_denied_email=denied@lab TF_VAR_probe_denied_token=stub
-VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",scope_regex="^lab-"}' -var "runtime_dir=$ROOT/tests/stub/runtime")
+VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "runtime_dir=$ROOT/tests/stub/runtime")
+STAGES=(bootstrap foundation conform)
 
-(cd "$ROOT/tests/stub" && python3 stub_tenant.py $PORT) >/tmp/stub_tenant.log 2>&1 &
-rm -f /tmp/spike-foundation.yaml   # a copy from an earlier run must never be restored over the working tree
-STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/admit/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"' EXIT
-sleep 2
+(cd "$ROOT/tests/stub" && exec python3 stub_tenant.py "$PORT" >/tmp/stub.log 2>&1) &
+rm -f /tmp/spike-foundation.yaml /tmp/spike-standard.yaml   # copies from an earlier run must never be restored
+STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/conform/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; [ -f /tmp/spike-standard.yaml ] && cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; true' EXIT
+sleep 1.5
 
 plan_expect_clean() { # stage label
   "$TF" -chdir="$ROOT/stages/$1" plan -detailed-exitcode -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 && rc=0 || rc=$?
   [ $rc -eq 0 ] && echo "  plan ($2): no changes" || { echo "  plan ($2): exit $rc"; grep -E "Plan:|Warning|Error" /tmp/spike-plan.out | head -5; return 1; }
 }
+apply_quiet() { "$TF" -chdir="$ROOT/stages/$1" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-apply.out 2>&1 || true; }
+out() { "$TF" -chdir="$ROOT/stages/$1" output -json "$2"; }
 
-# admit reads the foundation state from a local file in the spike (http backend in the pipeline)
-cat > "$ROOT/stages/admit/remote_state_override.tf" <<'HCL'
+# conform reads the foundation state from a local file in the spike (http backend in the pipeline)
+cat > "$ROOT/stages/conform/remote_state_override.tf" <<'HCL'
 data "terraform_remote_state" "foundation" {
   backend = "local"
   config  = { path = "../foundation/terraform.tfstate" }
 }
 HCL
-
-for stage in bootstrap identity foundation admit release; do
+for stage in "${STAGES[@]}"; do
   dir="$ROOT/stages/$stage"
   printf 'terraform {\n  backend "local" {}\n}\n' > "$dir/backend_override.tf"
   rm -f "$dir"/terraform.tfstate*
   "$TF" -chdir="$dir" init -no-color >/dev/null
   "$TF" -chdir="$dir" validate -no-color >/dev/null && echo "[$stage] validate ok"
-  # observe-only stages own no resources; apply just records their outputs and checks
-  "$TF" -chdir="$dir" apply -auto-approve -no-color "${VARS[@]}" | grep -E "Apply complete|Error|Warning" | sed "s/^/  /"
-  for n in 1 2 3; do plan_expect_clean "$stage" "rerun $n"; done
 done
 
+run_stage() { # stage: apply, then three clean re-plans
+  "$TF" -chdir="$ROOT/stages/$1" apply -auto-approve -no-color "${VARS[@]}" | grep -E "Apply complete|Error|Warning" | sed "s/^/  /"
+  for n in 1 2 3; do plan_expect_clean "$1" "rerun $n"; done
+}
+run_stage bootstrap
+run_stage foundation
+echo "  contract: $(out foundation contract | python3 -c 'import json,sys; c=json.load(sys.stdin); s=c["standards"]["restricted-collab-v1"]; print("scheme", s["scheme_id"], "roles", s["roles"], "stamp", c["stamp"])')"
+
+echo "[jsm] the stub seeds instances the way requests would create them (one conforming, the rest defective)"
+out foundation contract > /tmp/spike-contract.json
+python3 "$ROOT/tests/stub/seed_estate.py" "$PORT" /tmp/spike-contract.json | sed 's/^/  /'
+run_stage conform
+out conform findings | python3 -c 'import json,sys; [print("  finding:", f) for f in json.load(sys.stdin)]'
+python3 - <<'PY' "$(out conform instances)" "$(out conform summary)"
+import json, sys
+inst, summary = json.loads(sys.argv[1]), json.loads(sys.argv[2])
+expect = {
+  "jira:LABOK": set(), "jira:LABUSR": {"roles_bound_to_groups_only"}, "jira:LABNST": {"stamped_with_standard"},
+  "jira:LABOLD": {"recently_active"}, "jira:LABNOA": {"admin_role_bound"}, "jira:LABEXT": {"groups_match_ad_pattern"},
+  "jira:LABFOR": {"stamped_with_standard", "on_standard_scheme", "no_public_access"},
+  "confluence:LABOK": set(), "confluence:LABPUB": {"no_public_access"}, "confluence:LABOLDS": {"stamped_with_standard", "recently_active"},
+}
+for key, want in expect.items():
+    got = set(inst[key]["actions"])
+    assert got == want, f"{key}: expected {sorted(want)}, got {sorted(got)}"
+assert inst["jira:LABNST"]["standard"] == "restricted-collab-v1", "unstamped project must be classified by its scheme"
+assert inst["jira:LABFOR"]["actions"]["on_standard_scheme"] == {"rung": "restrict", "performed": "report"}, "restrict is planned, report performed"
+print(f"  every seeded defect found; summary = {json.dumps(summary, separators=(',', ':'))}")
+PY
+
 echo "[drift] rename the standard's scheme out of band, expect a failing check and no actions"
-SID=$("$TF" -chdir="$ROOT/stages/admit" output -raw scheme_id)
+SID=$(python3 -c 'import json; print(json.load(open("/tmp/spike-contract.json"))["standards"]["restricted-collab-v1"]["scheme_id"])')
 curl -s -X POST -H 'content-type: application/json' -d '{"name":"renamed by an admin"}' "http://127.0.0.1:$PORT/__stub/schemes/$SID" >/dev/null
 "$TF" -chdir="$ROOT/stages/foundation" plan -no-color -out=/tmp/spike-drift.bin "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
 "$TF" -chdir="$ROOT/stages/foundation" show -json /tmp/spike-drift.bin > /tmp/spike-drift.json
@@ -53,9 +82,8 @@ p = json.load(open("/tmp/spike-drift.json"))
 actions = sorted({a for c in p.get("resource_changes", []) for a in c["change"]["actions"]})
 failed = [c["address"]["to_display"] for c in p.get("checks", []) if c["status"] == "fail"]
 print(f"  actions={actions} drifted={len(p.get('resource_drift', []))} failed_checks={failed}")
-assert actions == ["no-op"] and failed, "drift must be reported, never repaired"
+assert actions == ["no-op"] and any("scheme_matches_policy" in f for f in failed)
 PY
-
 curl -s -X POST -H 'content-type: application/json' -d '{"name":"Platform restricted-collab-v1"}' "http://127.0.0.1:$PORT/__stub/schemes/$SID" >/dev/null
 
 echo "[provision] a grant removed out of band is detected from the tenant and recovered with state rm + apply"
@@ -77,14 +105,13 @@ echo "  removed grant $VICTIM"
 python3 - <<'PY'
 import json
 p = json.load(open("/tmp/spike-prov.json"))
-changes = [c["address"] for c in p.get("resource_changes", []) if c["change"]["actions"] != ["no-op"]]
+changes = [c["address"] for c in p.get("resource_changes", []) if c["change"]["actions"] != ["no-op"] and c["mode"] == "managed"]
 failed = [c["address"]["to_display"] for c in p.get("checks", []) if c["status"] == "fail"]
 print(f"  detected: actions={changes} failed_checks={failed}")
 assert changes == [], "the provider cannot see the deletion (restapi #377); the plan must stay a no-op"
 assert "check.mandatory_controls" in failed, "scheme_grants_match_standards must fail from the tenant read"
 PY
-ADDR="module.scheme[\"restricted-collab-v1\"].restapi_object.grant[\"$VICTIM\"]"
-"$TF" -chdir="$ROOT/stages/foundation" state rm -no-color "$ADDR" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" state rm -no-color "module.scheme[\"restricted-collab-v1\"].restapi_object.grant[\"$VICTIM\"]" >/dev/null
 "$TF" -chdir="$ROOT/stages/foundation" plan -no-color -out=/tmp/spike-prov.bin "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
 "$TF" -chdir="$ROOT/stages/foundation" show -json /tmp/spike-prov.bin > /tmp/spike-prov.json
 python3 - <<'PY'
@@ -96,34 +123,45 @@ assert len(changes) == 1 and changes[0][1] == ["create"] and ".grant[" in change
 PY
 "$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color /tmp/spike-prov.bin >/dev/null 2>&1
 plan_expect_clean foundation "after recovery"
-echo "  ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
+echo "  ready = $(out foundation ready | tr -d '\n ')"
 
-echo "[foundation] a failing mandatory control must stop admit at plan time"
+echo "[foundation] a failing mandatory control must show in readiness"
 curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/anonymous_jira_closed" >/dev/null
-"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
-echo "  foundation ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
-if "$TF" -chdir="$ROOT/stages/admit" plan -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1; then
-  echo "  FAIL: admit planned without a ready foundation"; exit 1
-else
-  grep -q "not ready for Jira" /tmp/spike-plan.out && echo "  admit refused: $(grep -o 'Shared foundation is not ready for Jira[^.]*' /tmp/spike-plan.out | head -1)"
-fi
+apply_quiet foundation
+echo "  foundation ready = $(out foundation ready | tr -d '\n ') blocking = $(out foundation blocking | tr -d '\n ')"
 curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/anonymous_jira_closed" >/dev/null
-"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
-plan_expect_clean admit "foundation restored"
+apply_quiet foundation
+plan_expect_clean foundation "foundation restored"
 
-echo "[policy] a requirement changed in YAML alone must change readiness (no HCL touched)"
+echo "[conform] a stale foundation evaluation must stop conform at plan time"
+if "$TF" -chdir="$ROOT/stages/conform" plan -no-color "${VARS[@]}" -var foundation_window_days=0 >/tmp/spike-plan.out 2>&1; then
+  echo "  FAIL: conform planned on a stale foundation"; exit 1
+else
+  grep -q "older than 0 days" /tmp/spike-plan.out && echo "  conform refused: foundation evaluation older than the window"
+fi
+
+echo "[policy] a requirement changed in YAML alone must change a verdict (no HCL touched)"
 cp "$ROOT/policy/foundation.yaml" /tmp/spike-foundation.yaml
 sed -i 's/require: { op: within_days, value: 7 }/require: { op: within_days, value: 0 }/' "$ROOT/policy/foundation.yaml"
-"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1 || true
-echo "  audit window 7 -> 0 days: ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ') blocking = $("$TF" -chdir="$ROOT/stages/foundation" output -json blocking | tr -d '\n ')"
-cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"
-"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
-echo "  restored: ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
+apply_quiet foundation
+echo "  foundation audit window 7 -> 0 days: ready = $(out foundation ready | tr -d '\n ')"
+cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; rm -f /tmp/spike-foundation.yaml
+apply_quiet foundation
+cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml
+sed -i 's/inactive_days: 90 /inactive_days: 100000 /' "$ROOT/policy/standards/restricted-collab-v1.yaml"
+apply_quiet conform
+echo "  standard inactive_days 90 -> 100000: LABOLD recently_active = $(out conform instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
+cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; rm -f /tmp/spike-standard.yaml
+apply_quiet conform
+echo "  restored: LABOLD recently_active = $(out conform instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
 
-echo "[destroy] removing a resource from configuration must be refused"
-if "$TF" -chdir="$ROOT/stages/identity" plan -no-color "${VARS[@]}" -var 'groups={lab-admins="x",lab-team="y"}' >/tmp/spike-plan.out 2>&1; then
+echo "[destroy] removing a provisioned role from policy must be refused"
+cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml
+sed -i 's/^roles: \[admin, lead, member, viewer\]/roles: [admin, lead, member]/; /^    viewer: /d' "$ROOT/policy/standards/restricted-collab-v1.yaml"
+if "$TF" -chdir="$ROOT/stages/foundation" plan -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1; then
   echo "  FAIL: plan accepted a removal"; exit 1
 else
   grep -q "prevent_destroy" /tmp/spike-plan.out && echo "  refused by prevent_destroy"
 fi
+cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; rm -f /tmp/spike-standard.yaml
 echo "spike complete"

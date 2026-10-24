@@ -17,7 +17,7 @@ records:
 
 `id` is the control id, `recorded` is RFC 3339 in UTC, `by` is an account from `policy/identities.yaml`.
 The window (`attested_within_days`) is in the catalogue; when it lapses the control fails and the
-products that depend on it are blocked at admit until the step is repeated and re-recorded.
+products that depend on it are reported as not ready until the step is repeated and re-recorded.
 The lab's `runtime/lab/attestations.yaml` is the honest record for the real lab tenant; the stub
 spike uses its own fixture under `tests/stub/runtime` and never writes to it.
 
@@ -33,7 +33,7 @@ spike uses its own fixture under `tests/stub/runtime` and never writes to it.
 The two native-creation controls are attested because Jira and Confluence global permissions have
 no public read or write API for other users. In the real lab, confirm the Jira global permission key
 with `GET /rest/api/3/permissions` and, if a key exists, replace the attestation with a
-`mypermissions` probe as the `allowed` identity (one fact block in `facts.tf`, one catalogue edit).
+`mypermissions` probe as a non-admin identity (one fact block in `facts.tf`, one catalogue edit).
 
 ## Recovering a provisioned setting removed out of band
 
@@ -49,4 +49,5 @@ terraform -chdir=stages/foundation plan     # exactly one create
 ```
 
 Then let the pipeline apply it. The spike proves this path (`tests/spike.sh`, "[provision]").
-Nothing else is touched: `prevent_destroy` and the gate still refuse every delete, update and replace.
+The `state rm` is the operator's investigation step the gate's `drift.delete_blocks` rule asks for;
+nothing else is touched, and `prevent_destroy` and the gate still refuse every delete, update and replace.
