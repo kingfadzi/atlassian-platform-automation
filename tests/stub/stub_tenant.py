@@ -27,8 +27,14 @@ def directories(org):
 @app.post("/admin/v2/orgs/<org>/workspaces")
 def workspaces(org):
     host = request.host_url.rstrip("/")
-    return jsonify({"data": [{"id": "ws-1", "attributes": {"typeKey": "jira-software", "hostUrl": host}},
-                             {"id": "ws-2", "attributes": {"typeKey": "confluence", "hostUrl": host}}], "links": {}})
+    return jsonify({"data": [{"id": "ws-1", "attributes": {"typeKey": "jira-software", "hostUrl": host, "capacity": 10}},
+                             {"id": "ws-2", "attributes": {"typeKey": "confluence", "hostUrl": host, "capacity": 10}}], "links": {}})
+
+
+@app.get("/rest/api/3/instance/license")
+def instance_license():       # the lab is a Free tenant; the entitlement controls report it
+    plan = "PAID" if "jira_plan_paid" in failing else "FREE"
+    return jsonify({"applications": [{"id": "jira-software", "plan": plan}, {"id": "jira-servicedesk", "plan": plan}]})
 
 
 # Jira

@@ -25,6 +25,10 @@ output "ready" {
   value       = local.ready
 }
 output "controls" { value = local.verdict }
+output "entitlement" {
+  description = "What the tenant's plans allow, for reading runbook findings honestly."
+  value       = { jira_application_plans = local.facts.jira_application_plans.value, confluence_seat_capacity = local.facts.confluence_seat_capacity.value }
+}
 output "provision" {
   description = "Who makes each control true: engine, runbook or external (from policy)."
   value       = { for id, c in local.by_id_prov : id => c.provision }

@@ -55,6 +55,14 @@ run_stage foundation
 echo "  contract: $(out foundation contract | python3 -c 'import json,sys; c=json.load(sys.stdin); s=c["standards"]["restricted-collab-v1"]; print("scheme", s["scheme_id"], "roles", s["roles"], "stamp", c["stamp"])')"
 echo "  treatment: $(out foundation contract | python3 -c 'import json,sys; t=json.load(sys.stdin)["treatment"]; print(t["project_key"], "asset type", t["issue_type_id"], "fields", sorted(t["field_ids"]), "request types", sorted(t["request_types"]))')"
 echo "  ready = $(out foundation ready | tr -d '\n ')"
+echo "  entitlement = $(out foundation entitlement | tr -d '\n ')"
+python3 - "$(out foundation controls)" <<'PY'
+import json, sys
+v = json.loads(sys.argv[1])
+for c in ("jira_plan_paid", "confluence_plan_above_free"):
+    assert v[c] == "fail", f"the stub is a Free tenant; {c} must be a reported fail, got {v[c]}"
+print("  entitlement controls report the Free plan without blocking readiness")
+PY
 python3 - "$(out foundation ready)" <<'PY'
 import json, sys
 ready = json.loads(sys.argv[1])

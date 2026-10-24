@@ -164,6 +164,26 @@ controls:
     require: { op: attested_within_days, value: 90 }
     lab: not_applicable      # no SIEM in the lab
 
+  # Entitlement (reported): which controls the plan can carry. Several runbook steps (restricting
+  # space creation, granular permissions, IP allowlists, audit retention) need a paid plan. A
+  # failing entitlement control explains why a runbook step cannot be completed; never attest a
+  # step the plan does not allow. Flip to mandatory for a firm tenant.
+  - id: jira_plan_paid
+    title: At least one Jira application is on a paid plan (Free cannot restrict global permissions)
+    provision: external
+    mandatory: false
+    depends: [jira]
+    fact: jira_paid_application_count
+    require: { op: at_least, value: 1 }
+
+  - id: confluence_plan_above_free
+    title: Confluence seat capacity above the Free tier (inferred from the admin API; Confluence has no plan API)
+    provision: external
+    mandatory: false
+    depends: [confluence]
+    fact: confluence_seat_capacity
+    require: { op: at_least, value_from: foundation.confluence_free_seats_plus_one }
+
   # Provisioned foundation (Cloud Foundation B and F): the engine creates these from policy and
   # then reads them back like any other fact.
   - id: roles_match_standards

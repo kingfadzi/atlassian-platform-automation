@@ -21,6 +21,16 @@ products that depend on it are reported as not ready until the step is repeated 
 The lab's `runtime/lab/attestations.yaml` is the honest record for the real lab tenant; the stub
 spike uses its own fixture under `tests/stub/runtime` and never writes to it.
 
+## Before you attest: what the plan allows
+
+Read the foundation output `entitlement` (and the reported controls `jira_plan_paid`,
+`confluence_plan_above_free`) first. On a Free plan several console steps cannot be completed:
+Confluence Free has no global or space permission settings, so "Create space" cannot be held to
+the engine group and `native_space_creation_closed` must stay unrecorded; the products that depend
+on it stay not ready, which is the honest state. Never record an attestation for a step the plan
+does not allow. The lab runs on Free deliberately; a firm tenant flips both entitlement controls
+to mandatory.
+
 ## Runbook steps
 
 | Control | Where | What to do |

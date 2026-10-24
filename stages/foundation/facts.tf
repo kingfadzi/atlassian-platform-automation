@@ -19,6 +19,9 @@
 #   confluence_space_roles           list     space role names available on the site
 #   site_admin_accounts              list     account ids in the admin groups named in policy/identities.yaml
 #   exceptional_identities_last_review string RFC 3339 of the oldest review in policy/identities.yaml
+#   jira_application_plans           map      Jira application id => UNLICENSED | FREE | PAID (instance license)
+#   jira_paid_application_count      number   Jira applications on a PAID plan
+#   confluence_seat_capacity         number   seat capacity of the Confluence workspace (admin API); Confluence has no plan API
 #   (treatment.tf)  service_project_keys, issue_type_names, custom_field_names, treatment_request_types, import_current_<id>
 
 locals {
@@ -27,12 +30,15 @@ locals {
     schemes   = data.http.permission_schemes, events = data.http.org_events, roles = data.http.application_roles,
     domains   = data.http.domains, policies = data.http.policies, retention = data.http.confluence_audit_retention,
     banner    = data.http.announcement_banner, project_roles = data.http.project_roles, space_roles = data.http.space_roles,
+    license   = data.http.jira_license, workspaces = data.http.workspaces,
   }
-  role_name_by_id     = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
-  admin_member_status = { for g, d in data.http.admin_group_members : g => d.status_code }
-  admin_members       = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
-  status              = { for k, d in local.http : k => d.status_code }
-  json                = { for k, d in local.http : k => try(jsondecode(d.response_body), {}) }
+  site_host            = replace(var.tenant.site_url, "/^https?:\\/\\//", "")
+  confluence_workspace = try(one([for w in local.json.workspaces.data : w if w.attributes.typeKey == "confluence" && endswith(w.attributes.hostUrl, local.site_host)]), null)
+  role_name_by_id      = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
+  admin_member_status  = { for g, d in data.http.admin_group_members : g => d.status_code }
+  admin_members        = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
+  status               = { for k, d in local.http : k => d.status_code }
+  json                 = { for k, d in local.http : k => try(jsondecode(d.response_body), {}) }
 
   schemes        = try(local.json.schemes.permissionSchemes, [])
   retention_unit = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
@@ -105,6 +111,18 @@ locals {
     site_admin_accounts = {
       known = alltrue([for g, c in local.admin_member_status : c == 200])
       value = distinct(local.admin_members)
+    }
+    jira_application_plans = {
+      known = local.status.license == 200
+      value = { for a in try(local.json.license.applications, []) : a.id => a.plan }
+    }
+    jira_paid_application_count = {
+      known = local.status.license == 200
+      value = length([for a in try(local.json.license.applications, []) : a if a.plan == "PAID"])
+    }
+    confluence_seat_capacity = {
+      known = local.status.workspaces == 200 && can(local.confluence_workspace.attributes.capacity)
+      value = try(local.confluence_workspace.attributes.capacity, null)
     }
     exceptional_identities_last_review = {
       known = true

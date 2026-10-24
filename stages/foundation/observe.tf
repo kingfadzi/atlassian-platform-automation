@@ -69,3 +69,15 @@ data "http" "admin_group_members" {
   url             = "${var.tenant.site_url}/rest/api/3/group/member?groupname=${urlencode(each.value)}&maxResults=200"
   request_headers = local.site_auth
 }
+
+data "http" "jira_license" {
+  url             = "${var.tenant.site_url}/rest/api/3/instance/license"
+  request_headers = local.site_auth
+}
+
+data "http" "workspaces" {
+  url             = "${var.admin_api_url}/v2/orgs/${var.tenant.org_id}/workspaces"
+  method          = "POST"
+  request_body    = "{}"
+  request_headers = { Authorization = "Bearer ${var.atlassian_org_api_key}", Accept = "application/json", "Content-Type" = "application/json" }
+}

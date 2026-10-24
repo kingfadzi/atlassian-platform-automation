@@ -31,7 +31,7 @@ data "http" "confluence_me" {
 
 locals {
   directory_ids = data.http.directories.status_code == 200 ? [for d in jsondecode(data.http.directories.response_body).data : d.directoryId] : []
-  workspaces    = data.http.workspaces.status_code == 200 ? jsondecode(data.http.workspaces.response_body).data : []
+  workspaces    = try(jsondecode(data.http.workspaces.response_body).data, []) # try(): a real response is a tuple of mixed objects, which a bare ?: cannot unify with []
   site_host     = replace(var.tenant.site_url, "/^https?:\\/\\//", "")
   product_keys  = [for w in local.workspaces : w.attributes.typeKey if endswith(w.attributes.hostUrl, local.site_host)]
 }

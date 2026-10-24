@@ -26,9 +26,10 @@ variable "tenant" {
 
 variable "foundation" {
   type = object({
-    domains               = optional(list(string), [])   # verified domains expected on the organisation
-    product_access_groups = optional(list(string), [])   # groups allowed as default product access; empty = not checked
-    banner_contains       = optional(string, "governed") # text the announcement banner must carry
+    domains                        = optional(list(string), [])   # verified domains expected on the organisation
+    product_access_groups          = optional(list(string), [])   # groups allowed as default product access; empty = not checked
+    banner_contains                = optional(string, "governed") # text the announcement banner must carry
+    confluence_free_seats_plus_one = optional(number, 11)         # Free tier is 10 seats; capacity above it implies a paid plan
   })
   description = "Tenant specifics for the non-mandatory foundation controls (see policy/foundation.yaml)."
   default     = {}

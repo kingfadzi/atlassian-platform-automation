@@ -4,7 +4,7 @@
 version: 2026-10
 owner: PLATFORM-GOV
 
-admin_groups: [site-admins, org-admins]     # group memberships the foundation reads to find admins
+admin_groups: [org-admins]                  # group memberships the foundation reads to find admins; a group that does not exist on the site leaves admins_are_listed unknown (fix the list, do not guess)
 
 accounts:
   - id: USER-LAB-ADMIN
