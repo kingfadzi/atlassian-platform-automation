@@ -40,6 +40,7 @@ validate:
     - terraform fmt -check -recursive
     - for s in bootstrap identity foundation admit release; do terraform -chdir=stages/$s init -backend=false && terraform -chdir=stages/$s validate; done
     - terraform -chdir=tests/intent init && terraform -chdir=tests/intent test
+    - terraform -chdir=modules/control_evaluation init && terraform -chdir=modules/control_evaluation test
     - apk add --no-cache python3 py3-yaml py3-pytest >/dev/null && python3 -m pytest -q tests/govern
 
 .plan:
