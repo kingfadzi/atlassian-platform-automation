@@ -28,8 +28,14 @@ Read the foundation output `entitlement` (and the reported controls `jira_plan_p
 Confluence Free has no global or space permission settings, so "Create space" cannot be held to
 the engine group and `native_space_creation_closed` must stay unrecorded; the products that depend
 on it stay not ready, which is the honest state. Never record an attestation for a step the plan
-does not allow. The lab runs on Free deliberately; a firm tenant flips both entitlement controls
-to mandatory.
+does not allow. Decision for the lab: validate on a Confluence Standard trial so
+`native_space_creation_closed` can be performed and recorded honestly; when the trial lapses the
+entitlement findings reappear and the attestation no longer describes the tenant, so re-check it.
+A firm tenant flips both entitlement controls to mandatory.
+
+A group named in `policy/identities.yaml` `admin_groups` that does not exist on the site leaves
+`site_admin_accounts` unknown and `admins_are_listed` blocks. This is deliberate: a wrong policy
+must not let readiness pass. Fix the list; the engine never guesses a group.
 
 ## Runbook steps
 
