@@ -13,16 +13,25 @@
 #   announcement_banner_text         string   banner message when enabled, else ""
 #   default_access_groups            list     default product-access groups across application roles
 #   attestation                      map      attestation id => recorded (RFC 3339), from runtime_dir
+#   jira_project_roles               list     site-wide project role names
+#   permission_scheme_names          list     permission scheme names on the site
+#   scheme_grants                    list     "scheme name|PERMISSION|role name" for every grant to a project role
+#   confluence_space_roles           list     space role names available on the site
+#   site_admin_accounts              list     account ids in the admin groups named in policy/identities.yaml
+#   exceptional_identities_last_review string RFC 3339 of the oldest review in policy/identities.yaml
 
 locals {
   http = {
     anon_jira = data.http.anonymous_jira, anon_conf = data.http.anonymous_confluence,
     schemes   = data.http.permission_schemes, events = data.http.org_events, roles = data.http.application_roles,
     domains   = data.http.domains, policies = data.http.policies, retention = data.http.confluence_audit_retention,
-    banner    = data.http.announcement_banner,
+    banner    = data.http.announcement_banner, project_roles = data.http.project_roles, space_roles = data.http.space_roles,
   }
-  status = { for k, d in local.http : k => d.status_code }
-  json   = { for k, d in local.http : k => try(jsondecode(d.response_body), {}) }
+  role_name_by_id     = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
+  admin_member_status = { for g, d in data.http.admin_group_members : g => d.status_code }
+  admin_members       = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
+  status              = { for k, d in local.http : k => d.status_code }
+  json                = { for k, d in local.http : k => try(jsondecode(d.response_body), {}) }
 
   schemes        = try(local.json.schemes.permissionSchemes, [])
   retention_unit = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
@@ -72,6 +81,33 @@ locals {
     attestation = {
       known = true
       value = { for r in local.attestations : r.id => r.recorded if r.kind == "attestation" }
+    }
+    jira_project_roles = {
+      known = local.status.project_roles == 200
+      value = try([for r in local.json.project_roles : r.name], [])
+    }
+    permission_scheme_names = {
+      known = local.status.schemes == 200
+      value = [for s in local.schemes : s.name]
+    }
+    scheme_grants = {
+      known = local.status.schemes == 200 && local.status.project_roles == 200
+      value = flatten([for s in local.schemes : [
+        for p in try(s.permissions, []) : "${s.name}|${p.permission}|${lookup(local.role_name_by_id, tostring(try(p.holder.parameter, "")), "?")}"
+        if try(p.holder.type, "") == "projectRole"
+      ]])
+    }
+    confluence_space_roles = {
+      known = local.status.space_roles == 200
+      value = try([for r in local.json.space_roles.results : r.name], [])
+    }
+    site_admin_accounts = {
+      known = alltrue([for g, c in local.admin_member_status : c == 200])
+      value = distinct(local.admin_members)
+    }
+    exceptional_identities_last_review = {
+      known = true
+      value = try(sort([for a in local.identities.accounts : a.reviewed])[0], null)
     }
   }
 }

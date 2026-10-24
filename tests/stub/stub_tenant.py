@@ -7,6 +7,7 @@ import sys
 from flask import Flask, jsonify, request
 
 from foundation_endpoints import foundation
+from provision_endpoints import provision
 from state import DIRECTORY, caller, db, failing, ids
 
 app = Flask(__name__)
@@ -57,7 +58,8 @@ def myself():
 
 
 def grant(body):
-    holder = {**body["holder"], "value": "gid-" + body["holder"]["parameter"], "expand": "group"}
+    kind = body["holder"]["type"]
+    holder = {**body["holder"], "value": f"{kind}-" + str(body["holder"]["parameter"]), "expand": "group" if kind == "group" else "projectRole"}
     return {"id": next(ids), "self": "x", "permission": body["permission"], "holder": holder}
 
 
@@ -177,6 +179,7 @@ def dump():
 
 
 app.register_blueprint(foundation)
+app.register_blueprint(provision)
 
 if __name__ == "__main__":
     app.run(port=int(sys.argv[1]) if len(sys.argv) > 1 else 8089)

@@ -1,11 +1,9 @@
-# Stage: foundation, part 4. Readiness is dependency-specific: a failing mandatory control
+# Stage: foundation, part 5. Readiness is dependency-specific: a failing mandatory control
 # blocks the products that depend on it and nothing else. stages/admit reads these outputs
 # through terraform_remote_state and refuses to plan Jira or Confluence assets that are not ready.
 
-variable "runtime_dir" {
-  type        = string
-  description = "Directory holding attestations.yaml (outside Git in anything but the lab)."
-  default     = "../../runtime/lab"
+locals {
+  by_id_prov = { for c in local.catalogue.controls : c.id => c }
 }
 
 check "mandatory_controls" {
@@ -27,6 +25,10 @@ output "ready" {
   value       = local.ready
 }
 output "controls" { value = local.verdict }
+output "provision" {
+  description = "Who makes each control true: engine, runbook or external (from policy)."
+  value       = { for id, c in local.by_id_prov : id => c.provision }
+}
 output "blocking" { value = local.blocking }
 output "findings" { value = local.findings }
 # Outputs must be stable between plans; volatile observations (event timestamps) stay out.

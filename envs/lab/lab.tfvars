@@ -15,18 +15,16 @@ groups = {
 }
 
 jira = {
-  scheme = {
-    name            = "LAB Restricted"
-    audience_groups = ["lab-admins", "lab-team"]
-    admin_groups    = ["lab-admins"]
-  }
   project = {
     key             = "LABR"
     name            = "LAB Restricted"
     type            = "software"
     template        = "com.pyxis.greenhopper.jira:gh-simplified-kanban-classic"
     lead_account_id = "USER-LAB-ADMIN"
-    assignee_type   = "UNASSIGNED"
+    roles = { # role keys come from the standard; groups are bound per asset
+      admin  = ["lab-admins"]
+      member = ["lab-team"]
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-# Stage: foundation, part 1. HTTP reads behind the facts in facts.tf.
+# Stage: foundation, part 1 (after provision.tf). HTTP reads behind the facts in facts.tf.
 # Anonymous probes carry no Authorization header on purpose.
 
 locals {
@@ -20,6 +20,7 @@ data "http" "anonymous_confluence" {
 data "http" "permission_schemes" {
   url             = "${var.tenant.site_url}/rest/api/3/permissionscheme?expand=permissions"
   request_headers = local.site_auth
+  depends_on      = [module.scheme]
 }
 
 data "http" "org_events" {
@@ -49,5 +50,22 @@ data "http" "confluence_audit_retention" {
 
 data "http" "announcement_banner" {
   url             = "${var.tenant.site_url}/rest/api/3/announcementBanner"
+  request_headers = local.site_auth
+}
+
+data "http" "project_roles" {
+  url             = "${var.tenant.site_url}/rest/api/3/role"
+  request_headers = local.site_auth
+  depends_on      = [module.role]
+}
+
+data "http" "space_roles" {
+  url             = "${var.tenant.site_url}/wiki/api/v2/space-roles"
+  request_headers = local.site_auth
+}
+
+data "http" "admin_group_members" {
+  for_each        = toset(local.identities.admin_groups)
+  url             = "${var.tenant.site_url}/rest/api/3/group/member?groupname=${urlencode(each.value)}&maxResults=200"
   request_headers = local.site_auth
 }

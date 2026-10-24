@@ -1,0 +1,24 @@
+# Exceptional identities (Cloud Foundation B): accounts that hold organisation or site
+# administration, run automation, or exist for emergency access. Anything with admin power that
+# is not listed here is a finding. `reviewed` is RFC 3339; the review window is in foundation.yaml.
+version: 2026-10
+owner: PLATFORM-GOV
+
+admin_groups: [site-admins, org-admins]     # group memberships the foundation reads to find admins
+
+accounts:
+  - id: USER-LAB-ADMIN
+    kind: human_admin
+    owner: PLATFORM-GOV
+    scope: organisation and site administration (lab)
+    reviewed: 2026-10-20T00:00:00Z
+  - id: USER-LAB-ENGINE
+    kind: engine
+    owner: PLATFORM-GOV
+    scope: pipeline principal; scoped tokens per stage; no interactive login
+    reviewed: 2026-10-20T00:00:00Z
+  - id: USER-LAB-BREAKGLASS
+    kind: emergency
+    owner: PLATFORM-GOV
+    scope: sealed credentials; use raises a finding
+    reviewed: 2026-10-20T00:00:00Z

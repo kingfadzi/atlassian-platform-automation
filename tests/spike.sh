@@ -11,9 +11,10 @@ export TF_VAR_atlassian_org_api_key=stub TF_VAR_atlassian_email=admin@lab TF_VAR
 export TF_VAR_admin_api_url="http://127.0.0.1:$PORT/admin"
 export TF_VAR_probe_allowed_email=allowed@lab TF_VAR_probe_allowed_token=stub
 export TF_VAR_probe_denied_email=denied@lab TF_VAR_probe_denied_token=stub
-VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",scope_regex="^lab-"}')
+VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",scope_regex="^lab-"}' -var "runtime_dir=$ROOT/tests/stub/runtime")
 
 (cd "$ROOT/tests/stub" && python3 stub_tenant.py $PORT) >/tmp/stub_tenant.log 2>&1 &
+rm -f /tmp/spike-foundation.yaml   # a copy from an earlier run must never be restored over the working tree
 STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/admit/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"' EXIT
 sleep 2
 
@@ -41,11 +42,11 @@ for stage in bootstrap identity foundation admit release; do
   for n in 1 2 3; do plan_expect_clean "$stage" "rerun $n"; done
 done
 
-echo "[drift] rename the scheme out of band, expect a failing check and no actions"
+echo "[drift] rename the standard's scheme out of band, expect a failing check and no actions"
 SID=$("$TF" -chdir="$ROOT/stages/admit" output -raw scheme_id)
 curl -s -X POST -H 'content-type: application/json' -d '{"name":"renamed by an admin"}' "http://127.0.0.1:$PORT/__stub/schemes/$SID" >/dev/null
-"$TF" -chdir="$ROOT/stages/admit" plan -no-color -out=/tmp/spike-drift.bin "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
-"$TF" -chdir="$ROOT/stages/admit" show -json /tmp/spike-drift.bin > /tmp/spike-drift.json
+"$TF" -chdir="$ROOT/stages/foundation" plan -no-color -out=/tmp/spike-drift.bin "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+"$TF" -chdir="$ROOT/stages/foundation" show -json /tmp/spike-drift.bin > /tmp/spike-drift.json
 python3 - <<'PY'
 import json
 p = json.load(open("/tmp/spike-drift.json"))
@@ -54,6 +55,48 @@ failed = [c["address"]["to_display"] for c in p.get("checks", []) if c["status"]
 print(f"  actions={actions} drifted={len(p.get('resource_drift', []))} failed_checks={failed}")
 assert actions == ["no-op"] and failed, "drift must be reported, never repaired"
 PY
+
+curl -s -X POST -H 'content-type: application/json' -d '{"name":"Platform restricted-collab-v1"}' "http://127.0.0.1:$PORT/__stub/schemes/$SID" >/dev/null
+
+echo "[provision] a grant removed out of band is detected from the tenant and recovered with state rm + apply"
+VICTIM=$(python3 - "$PORT" "$SID" <<'PY'
+import json, sys, urllib.request
+port, sid = sys.argv[1], int(sys.argv[2])
+get = lambda p: json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}{p}"))
+scheme = next(s for s in get("/__stub/dump")["schemes"] if s["id"] == sid)
+victim, rest = scheme["permissions"][0], scheme["permissions"][1:]
+body = json.dumps({"permissions": rest}).encode()
+urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}/__stub/schemes/{sid}", body, {"content-type": "application/json"}, method="POST"))
+role = next(r["name"] for r in get("/rest/api/3/role") if str(r["id"]) == str(victim["holder"]["parameter"]))
+print(f"{victim['permission']}:{role.removeprefix('platform-')}")
+PY
+)
+echo "  removed grant $VICTIM"
+"$TF" -chdir="$ROOT/stages/foundation" plan -no-color -out=/tmp/spike-prov.bin "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+"$TF" -chdir="$ROOT/stages/foundation" show -json /tmp/spike-prov.bin > /tmp/spike-prov.json
+python3 - <<'PY'
+import json
+p = json.load(open("/tmp/spike-prov.json"))
+changes = [c["address"] for c in p.get("resource_changes", []) if c["change"]["actions"] != ["no-op"]]
+failed = [c["address"]["to_display"] for c in p.get("checks", []) if c["status"] == "fail"]
+print(f"  detected: actions={changes} failed_checks={failed}")
+assert changes == [], "the provider cannot see the deletion (restapi #377); the plan must stay a no-op"
+assert "check.mandatory_controls" in failed, "scheme_grants_match_standards must fail from the tenant read"
+PY
+ADDR="module.scheme[\"restricted-collab-v1\"].restapi_object.grant[\"$VICTIM\"]"
+"$TF" -chdir="$ROOT/stages/foundation" state rm -no-color "$ADDR" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" plan -no-color -out=/tmp/spike-prov.bin "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+"$TF" -chdir="$ROOT/stages/foundation" show -json /tmp/spike-prov.bin > /tmp/spike-prov.json
+python3 - <<'PY'
+import json
+p = json.load(open("/tmp/spike-prov.json"))
+changes = [(c["address"], c["change"]["actions"]) for c in p.get("resource_changes", []) if c["change"]["actions"] != ["no-op"] and c["mode"] == "managed"]
+print(f"  recovery plan: {changes}")
+assert len(changes) == 1 and changes[0][1] == ["create"] and ".grant[" in changes[0][0], "recovery must re-create exactly the missing grant"
+PY
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color /tmp/spike-prov.bin >/dev/null 2>&1
+plan_expect_clean foundation "after recovery"
+echo "  ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
 
 echo "[foundation] a failing mandatory control must stop admit at plan time"
 curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/anonymous_jira_closed" >/dev/null

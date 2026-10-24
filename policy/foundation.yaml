@@ -16,6 +16,11 @@
 # value_from names a path in the intent's `foundation` object instead of a literal value; when it
 # resolves to an empty list the control is not_applicable (the intent has nothing to require).
 #
+# provision says who makes the setting true (docs/runbook-foundation.md lists the runbook steps):
+#   engine    the foundation stage provisions it from policy (stages/foundation/provision.tf)
+#   runbook   admin console only; a named operator does it once and records an attestation
+#   external  owned by another system (identity provider, AD, ServiceNow); verified only
+#
 # mandatory: true blocks the dependent products until satisfied; false is reported only.
 # lab: not_applicable marks controls outside the personal lab's plan or scope.
 # unknown (fact unreadable) counts as unsatisfied for a mandatory control.
@@ -29,6 +34,7 @@ controls:
     title: Anonymous Jira access closed
     register: [SSCF-EXP-01]
     effective_from: 2026-10-20
+    provision: runbook
     mandatory: true
     depends: [jira]
     fact: anonymous_jira_projects
@@ -38,6 +44,7 @@ controls:
     title: Anonymous Confluence access closed
     register: [SSCF-EXP-01]
     effective_from: 2026-10-20
+    provision: runbook
     mandatory: true
     depends: [confluence]
     fact: anonymous_confluence_spaces
@@ -47,6 +54,7 @@ controls:
     title: No permission scheme grants to anyone on the internet
     register: [SSCF-EXP-01, SSCF-ACC-03]
     effective_from: 2026-10-20
+    provision: runbook
     mandatory: true
     depends: [jira]
     fact: scheme_grants_to_anyone
@@ -56,6 +64,7 @@ controls:
     title: Organisation audit collection live
     register: [SSCF-LOG-01]
     effective_from: 2026-10-20
+    provision: external
     mandatory: true
     depends: [jira, confluence]
     fact: latest_org_audit_event
@@ -65,6 +74,7 @@ controls:
     title: Public links and external sharing off
     register: [SSCF-EXP-02]
     effective_from: 2026-10-20
+    provision: runbook
     mandatory: true
     depends: [confluence]
     fact: attestation
@@ -73,6 +83,7 @@ controls:
   # Reported only in the lab
   - id: no_sitewide_browse_grants
     title: No scheme grants BROWSE_PROJECTS to every licensed user
+    provision: runbook
     mandatory: false
     depends: [jira]
     fact: scheme_browse_for_all_licensed
@@ -80,6 +91,7 @@ controls:
 
   - id: product_access_by_group
     title: Default product access groups are the declared ones
+    provision: runbook
     mandatory: false
     depends: [jira]
     fact: default_access_groups
@@ -87,6 +99,7 @@ controls:
 
   - id: verified_domains_known
     title: Verified domains include those in the intent
+    provision: external
     mandatory: false
     depends: [jira, confluence]
     fact: verified_domains
@@ -94,6 +107,7 @@ controls:
 
   - id: org_policies_enabled
     title: Data residency policy present and enabled
+    provision: runbook
     mandatory: false
     depends: [jira, confluence]
     fact: enabled_policy_types
@@ -101,6 +115,7 @@ controls:
 
   - id: confluence_audit_retention
     title: Confluence audit retention meets the minimum
+    provision: runbook
     mandatory: false
     depends: [confluence]
     fact: confluence_audit_retention_days
@@ -108,6 +123,7 @@ controls:
 
   - id: announcement_banner
     title: Announcement banner declares the governed estate
+    provision: runbook
     mandatory: false
     depends: [jira]
     fact: announcement_banner_text
@@ -115,6 +131,7 @@ controls:
 
   - id: evidence_retrieval
     title: Evidence retrieval from the ledger destination
+    provision: runbook
     mandatory: false
     depends: [jira, confluence]
     fact: attestation
@@ -123,6 +140,7 @@ controls:
 
   - id: self_signup_off
     title: Self-signup and approved-domain signup off
+    provision: runbook
     mandatory: false
     depends: [jira, confluence]
     fact: attestation
@@ -130,6 +148,7 @@ controls:
 
   - id: authentication_policy
     title: Authentication policy, SSO and SCIM
+    provision: external
     mandatory: false
     depends: [jira, confluence]
     fact: attestation
@@ -138,8 +157,84 @@ controls:
 
   - id: alert_routing_tested
     title: Alert routing to responders tested
+    provision: runbook
     mandatory: false
     depends: [jira, confluence]
     fact: attestation
     require: { op: attested_within_days, value: 90 }
     lab: not_applicable      # no SIEM in the lab
+
+  # Provisioned foundation (Cloud Foundation B and F): the engine creates these from policy and
+  # then reads them back like any other fact.
+  - id: roles_match_standards
+    title: Site-wide Jira project roles exist for every role the standards declare
+    register: [SSCF-ACC-03]
+    provision: engine
+    mandatory: true
+    depends: [jira]
+    fact: jira_project_roles
+    require: { op: superset_of, value_from: policy.role_names }
+
+  - id: scheme_per_standard_present
+    title: One permission scheme per standard, granting to roles
+    register: [SSCF-ACC-03]
+    provision: engine
+    mandatory: true
+    depends: [jira]
+    fact: permission_scheme_names
+    require: { op: superset_of, value_from: policy.scheme_names }
+
+  - id: scheme_grants_match_standards
+    title: Every grant a standard declares is present in its scheme (detects grants removed out of band)
+    register: [SSCF-ACC-03]
+    provision: engine
+    mandatory: true
+    depends: [jira]
+    fact: scheme_grants
+    require: { op: superset_of, value_from: policy.scheme_grants }
+
+  - id: confluence_space_roles_present
+    title: Confluence default space roles available on the site
+    provision: external          # Atlassian feature rollout; nothing to configure
+    mandatory: true
+    depends: [confluence]
+    fact: confluence_space_roles
+    require: { op: superset_of, value_from: policy.space_role_names }
+
+  # Native creation closed (Cloud Foundation C): console only, no public write API.
+  - id: native_project_creation_closed
+    title: Only the engine can create Jira projects (team-managed creation removed from all users)
+    register: [SSCF-ACC-03]
+    provision: runbook
+    mandatory: true
+    depends: [jira]
+    fact: attestation
+    require: { op: attested_within_days, value: 90 }
+
+  - id: native_space_creation_closed
+    title: Only the engine can create Confluence spaces (Create Space held by the engine group)
+    register: [SSCF-ACC-03]
+    provision: runbook
+    mandatory: true
+    depends: [confluence]
+    fact: attestation
+    require: { op: attested_within_days, value: 90 }
+
+  # Exceptional identities (Cloud Foundation B).
+  - id: admins_are_listed
+    title: Every account holding organisation or site administration is in policy/identities.yaml
+    register: [SSCF-ACC-01]
+    provision: external          # memberships come from the directory
+    mandatory: true
+    depends: [jira, confluence]
+    fact: site_admin_accounts
+    require: { op: subset_of, value_from: policy.admin_accounts }
+
+  - id: exceptional_identities_reviewed
+    title: Exceptional identities reviewed within the window
+    register: [SSCF-ACC-01]
+    provision: runbook
+    mandatory: true
+    depends: [jira, confluence]
+    fact: exceptional_identities_last_review
+    require: { op: within_days, value: 90 }

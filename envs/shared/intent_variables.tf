@@ -31,26 +31,26 @@ variable "groups" {
 
 variable "jira" {
   type = object({
-    scheme = object({
-      name            = string
-      audience_groups = list(string)
-      admin_groups    = list(string)
-    })
     project = object({
       key             = string
       name            = string
       type            = string
       template        = string
       lead_account_id = string
+      roles           = map(list(string)) # role key (from the standard) => groups bound to it
     })
   })
   validation {
-    condition     = !local.rules.admins_must_be_subset_of_audience || length(setsubtract(var.jira.scheme.admin_groups, var.jira.scheme.audience_groups)) == 0
-    error_message = "jira.scheme.admin_groups must be a subset of audience_groups (policy/intent_rules.yaml)."
+    condition     = length(setsubtract(keys(var.jira.project.roles), local.standard.roles)) == 0
+    error_message = "jira.project.roles keys must be roles of the selected standard: ${join(", ", local.standard.roles)}."
   }
   validation {
-    condition     = !local.rules.audience_groups_must_be_declared || length(setsubtract(var.jira.scheme.audience_groups, keys(var.groups))) == 0
-    error_message = "jira.scheme.audience_groups must all be declared in groups (policy/intent_rules.yaml)."
+    condition     = !local.rules.admin_role_required || try(length(var.jira.project.roles["admin"]), 0) > 0
+    error_message = "jira.project.roles.admin must bind at least one group (policy/intent_rules.yaml)."
+  }
+  validation {
+    condition     = !local.rules.role_groups_must_be_declared || length(setsubtract(flatten(values(var.jira.project.roles)), keys(var.groups))) == 0
+    error_message = "Every group bound to a role must be declared in groups (policy/intent_rules.yaml)."
   }
   validation {
     condition     = contains(local.standard.jira.project_types, var.jira.project.type)
@@ -71,7 +71,7 @@ variable "confluence" {
     })
   })
   validation {
-    condition     = !local.rules.audience_groups_must_be_declared || length(setsubtract(var.confluence.space.audience_groups, keys(var.groups))) == 0
+    condition     = !local.rules.role_groups_must_be_declared || length(setsubtract(var.confluence.space.audience_groups, keys(var.groups))) == 0
     error_message = "confluence.space.audience_groups must all be declared in groups (policy/intent_rules.yaml)."
   }
   validation {
@@ -122,4 +122,10 @@ variable "foundation" {
   })
   description = "Tenant specifics for the non-mandatory foundation controls (see policy/foundation.yaml)."
   default     = {}
+}
+
+variable "runtime_dir" {
+  type        = string
+  description = "Directory holding attestations.yaml, authority.yaml and exceptions.yaml (outside Git in anything but the lab). Read by the foundation stage."
+  default     = "../../runtime/lab"
 }

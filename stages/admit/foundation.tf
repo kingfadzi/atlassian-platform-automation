@@ -27,3 +27,17 @@ locals {
   confluence_ready = local.foundation_fresh && local.foundation.ready.confluence
   foundation_why   = local.foundation_fresh ? "blocked by ${join(", ", keys(local.foundation.blocking))}" : "evaluation from ${local.foundation.evaluated_on} is older than ${var.foundation_window_days} days"
 }
+
+# The standard's scheme and every role the asset binds must have been provisioned by the foundation.
+resource "terraform_data" "foundation_provisioned" {
+  lifecycle {
+    precondition {
+      condition     = can(local.foundation.scheme_ids[var.governance.standard])
+      error_message = "Foundation has not provisioned a permission scheme for standard '${var.governance.standard}'."
+    }
+    precondition {
+      condition     = alltrue([for r in keys(var.jira.project.roles) : can(local.foundation.role_ids[r])])
+      error_message = "Foundation has not provisioned all roles bound by this asset: ${join(", ", keys(var.jira.project.roles))}."
+    }
+  }
+}
