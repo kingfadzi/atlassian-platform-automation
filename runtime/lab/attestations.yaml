@@ -1,9 +1,20 @@
+# Lab attestations (simulated authority; outside Git in anything but the lab).
+# `recorded` is RFC 3339 so Terraform and the gate can apply the window in policy.
 records:
   - id: custody
     kind: attestation
-    recorded: 2026-10-20
+    recorded: 2026-10-20T00:00:00Z
     by: USER-LAB-ADMIN
   - id: auth_policy
     kind: attestation
-    recorded: 2026-10-20
+    recorded: 2026-10-20T00:00:00Z
+    by: USER-LAB-ADMIN
+  - id: public_links_off
+    kind: attestation
+    recorded: 2026-10-20T00:00:00Z
+    by: USER-LAB-ADMIN
+    evidence: "admin console > Confluence > Public links: off (screenshot in lab evidence folder)"
+  - id: self_signup_off
+    kind: attestation
+    recorded: 2026-10-20T00:00:00Z
     by: USER-LAB-ADMIN

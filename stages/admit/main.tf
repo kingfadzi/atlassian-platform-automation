@@ -1,6 +1,6 @@
 # Stage: admit. The first restricted assets: a Jira permission scheme and project, a
 # Confluence space and its group permissions. Groups are referenced by name and must
-# already exist (stage identity). Governance context is stamped into descriptions so
+# already exist (stage identity) and the shared foundation must be ready (foundation.tf). Governance context is stamped into descriptions so
 # the tenant itself shows which authority admitted each asset.
 
 locals {
@@ -11,16 +11,20 @@ module "scheme" {
   source    = "../../modules/jira_permission_scheme"
   providers = { restapi = restapi.jira }
 
-  name            = var.jira.scheme.name
-  description     = local.stamp
-  audience_groups = var.jira.scheme.audience_groups
-  admin_groups    = var.jira.scheme.admin_groups
+  foundation_ready = local.jira_ready
+  foundation_why   = local.foundation_why
+  name             = var.jira.scheme.name
+  description      = local.stamp
+  audience_groups  = var.jira.scheme.audience_groups
+  admin_groups     = var.jira.scheme.admin_groups
 }
 
 module "project" {
   source    = "../../modules/jira_project"
   providers = { restapi = restapi.jira }
 
+  foundation_ready     = local.jira_ready
+  foundation_why       = local.foundation_why
   key                  = var.jira.project.key
   name                 = var.jira.project.name
   description          = local.stamp
@@ -37,8 +41,10 @@ module "space" {
   source    = "../../modules/confluence_space"
   providers = { restapi = restapi.confluence }
 
-  key  = var.confluence.space.key
-  name = var.confluence.space.name
+  foundation_ready = local.confluence_ready
+  foundation_why   = local.foundation_why
+  key              = var.confluence.space.key
+  name             = var.confluence.space.name
 }
 
 module "space_permission" {

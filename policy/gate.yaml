@@ -8,10 +8,12 @@ drift:
   report_fields: [api_data, api_response]  # refresh noise, reported only
 checks:
   failures_block: true                # failed check blocks (drift, probes, tenancy) stop the apply
+  report_prefix: report_              # checks named report_* are findings, never blockers
 review:
   reviewer_must_not_be_admin: true
   plan_digest: sha256
 windows_days:
+  foundation: 7                       # admit needs a foundation evaluation newer than this
   attestation: 90
   authority: 365
   exception: 30

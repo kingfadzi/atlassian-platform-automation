@@ -29,6 +29,8 @@ stages: [validate, plan, gate, apply, operate]
     - export TF_HTTP_LOCK_ADDRESS="$TF_HTTP_ADDRESS/lock" TF_HTTP_UNLOCK_ADDRESS="$TF_HTTP_ADDRESS/lock"
     - export TF_HTTP_LOCK_METHOD=POST TF_HTTP_UNLOCK_METHOD=DELETE TF_HTTP_RETRY_WAIT_MIN=5
     - export TF_HTTP_USERNAME=gitlab-ci-token TF_HTTP_PASSWORD="$CI_JOB_TOKEN"
+    # admit reads the foundation stage's readiness from its state
+    - export TF_VAR_foundation_state="{\"address\":\"$CI_API_V4_URL/projects/$CI_PROJECT_ID/terraform/state/$ENV-foundation\",\"username\":\"gitlab-ci-token\",\"password\":\"$CI_JOB_TOKEN\"}"
     - terraform -chdir=stages/$STAGE init
   resource_group: $ENV-$STAGE          # one run per stage at a time
 
@@ -36,7 +38,7 @@ validate:
   stage: validate
   script:
     - terraform fmt -check -recursive
-    - for s in bootstrap identity admit release; do terraform -chdir=stages/$s init -backend=false && terraform -chdir=stages/$s validate; done
+    - for s in bootstrap identity foundation admit release; do terraform -chdir=stages/$s init -backend=false && terraform -chdir=stages/$s validate; done
     - terraform -chdir=tests/intent init && terraform -chdir=tests/intent test
     - apk add --no-cache python3 py3-yaml py3-pytest >/dev/null && python3 -m pytest -q tests/govern
 
@@ -75,7 +77,7 @@ validate:
     - terraform -chdir=stages/$STAGE apply plan.bin
     - terraform -chdir=stages/$STAGE apply -refresh-only -auto-approve -var-file=../../envs/$ENV/$ENV.tfvars   # persist the read-back shape
 
-# bootstrap and release own nothing: plan + gate is the whole job. identity and admit also apply.
+# bootstrap, foundation and release own no tenant resources; their apply only records outputs and checks.
 plan:bootstrap: { extends: .plan, variables: { STAGE: bootstrap } }
 gate:bootstrap: { extends: .gate, variables: { STAGE: bootstrap }, needs: [plan:bootstrap] }
 
@@ -83,7 +85,11 @@ plan:identity: { extends: .plan, variables: { STAGE: identity }, needs: [gate:bo
 gate:identity: { extends: .gate, variables: { STAGE: identity }, needs: [plan:identity] }
 apply:identity: { extends: .apply, variables: { STAGE: identity }, needs: [gate:identity] }
 
-plan:admit: { extends: .plan, variables: { STAGE: admit }, needs: [apply:identity] }
+plan:foundation: { extends: .plan, variables: { STAGE: foundation }, needs: [apply:identity] }
+gate:foundation: { extends: .gate, variables: { STAGE: foundation }, needs: [plan:foundation] }
+apply:foundation: { extends: .apply, variables: { STAGE: foundation }, needs: [gate:foundation] }   # records readiness outputs only
+
+plan:admit: { extends: .plan, variables: { STAGE: admit }, needs: [apply:foundation] }
 gate:admit: { extends: .gate, variables: { STAGE: admit }, needs: [plan:admit] }
 apply:admit: { extends: .apply, variables: { STAGE: admit }, needs: [gate:admit] }
 
@@ -96,7 +102,7 @@ drift:
   stage: operate
   rules: [{ if: $CI_PIPELINE_SOURCE == "schedule" }]
   parallel:
-    matrix: [{ STAGE: [identity, admit, release] }]
+    matrix: [{ STAGE: [identity, foundation, admit, release] }]
   script:
     - terraform -chdir=stages/$STAGE plan -refresh-only -out=plan.bin -var-file=../../envs/$ENV/$ENV.tfvars
     - terraform -chdir=stages/$STAGE show -json plan.bin > stages/$STAGE/plan.json

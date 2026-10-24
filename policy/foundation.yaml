@@ -1,0 +1,101 @@
+# Shared foundation controls (lifecycle stage "establish the shared foundation").
+# This catalogue is the surface for change: add, retire or re-scope a control here.
+#
+# method:    probe   = representative flow test as an anonymous or denied caller
+#            observe = required-versus-actual read of a setting
+#            attest  = no API; a dated record in runtime/<env>/attestations.yaml with this id
+# mandatory: true blocks the dependent products until the control passes; false is reported only
+# depends:   which product readiness the control feeds
+# lab:       not_applicable marks controls outside the personal lab's plan or scope
+
+attestation_window_days: 90
+audit_freshness_days: 7
+confluence_audit_retention_min_days: 365
+
+controls:
+  # Mandatory core for the lab
+  - id: anonymous_jira_closed
+    title: Anonymous Jira access closed
+    method: probe
+    mandatory: true
+    depends: [jira]
+    register: [SSCF-EXP-01]
+  - id: anonymous_confluence_closed
+    title: Anonymous Confluence access closed
+    method: probe
+    mandatory: true
+    depends: [confluence]
+    register: [SSCF-EXP-01]
+  - id: no_public_scheme_grants
+    title: No permission scheme grants to anyone on the internet
+    method: observe
+    mandatory: true
+    depends: [jira]
+    register: [SSCF-EXP-01, SSCF-ACC-03]
+  - id: audit_collection_live
+    title: Organisation audit collection live
+    method: observe
+    mandatory: true
+    depends: [jira, confluence]
+    register: [SSCF-LOG-01]
+  - id: public_links_off
+    title: Public links and external sharing off
+    method: attest
+    mandatory: true
+    depends: [confluence]
+    register: [SSCF-EXP-02]
+
+  # Reported only in the lab
+  - id: no_sitewide_browse_grants
+    title: No scheme grants BROWSE_PROJECTS to every licensed user
+    method: observe
+    mandatory: false
+    depends: [jira]
+  - id: product_access_by_group
+    title: Product access granted through declared groups only
+    method: observe
+    mandatory: false
+    depends: [jira]
+  - id: verified_domains_known
+    title: Verified domains match the intent
+    method: observe
+    mandatory: false
+    depends: [jira, confluence]
+  - id: org_policies_enabled
+    title: Data residency policy present and enabled
+    method: observe
+    mandatory: false
+    depends: [jira, confluence]
+  - id: confluence_audit_retention
+    title: Confluence audit retention meets the minimum
+    method: observe
+    mandatory: false
+    depends: [confluence]
+  - id: announcement_banner
+    title: Announcement banner declares the governed estate
+    method: observe
+    mandatory: false
+    depends: [jira]
+  - id: evidence_retrieval
+    title: Evidence retrieval from the ledger destination
+    method: observe
+    mandatory: false
+    depends: [jira, confluence]
+    lab: not_applicable      # no evidence destination chosen yet
+  - id: self_signup_off
+    title: Self-signup and approved-domain signup off
+    method: attest
+    mandatory: false
+    depends: [jira, confluence]
+  - id: authentication_policy
+    title: Authentication policy, SSO and SCIM
+    method: attest
+    mandatory: false
+    depends: [jira, confluence]
+    lab: not_applicable      # Atlassian Guard, outside the lab plan
+  - id: alert_routing_tested
+    title: Alert routing to responders tested
+    method: attest
+    mandatory: false
+    depends: [jira, confluence]
+    lab: not_applicable      # no SIEM in the lab

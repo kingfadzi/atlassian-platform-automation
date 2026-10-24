@@ -13,8 +13,8 @@ export TF_VAR_probe_allowed_email=allowed@lab TF_VAR_probe_allowed_token=stub
 export TF_VAR_probe_denied_email=denied@lab TF_VAR_probe_denied_token=stub
 VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",scope_regex="^lab-"}')
 
-python3 "$ROOT/tests/stub/stub_tenant.py" $PORT >/tmp/stub_tenant.log 2>&1 &
-STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf' EXIT
+(cd "$ROOT/tests/stub" && python3 stub_tenant.py $PORT) >/tmp/stub_tenant.log 2>&1 &
+STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/admit/remote_state_override.tf' EXIT
 sleep 2
 
 plan_expect_clean() { # stage label
@@ -22,7 +22,15 @@ plan_expect_clean() { # stage label
   [ $rc -eq 0 ] && echo "  plan ($2): no changes" || { echo "  plan ($2): exit $rc"; grep -E "Plan:|Warning|Error" /tmp/spike-plan.out | head -5; return 1; }
 }
 
-for stage in bootstrap identity admit release; do
+# admit reads the foundation state from a local file in the spike (http backend in the pipeline)
+cat > "$ROOT/stages/admit/remote_state_override.tf" <<'HCL'
+data "terraform_remote_state" "foundation" {
+  backend = "local"
+  config  = { path = "../foundation/terraform.tfstate" }
+}
+HCL
+
+for stage in bootstrap identity foundation admit release; do
   dir="$ROOT/stages/$stage"
   printf 'terraform {\n  backend "local" {}\n}\n' > "$dir/backend_override.tf"
   rm -f "$dir"/terraform.tfstate*
@@ -46,6 +54,19 @@ failed = [c["address"]["to_display"] for c in p.get("checks", []) if c["status"]
 print(f"  actions={actions} drifted={len(p.get('resource_drift', []))} failed_checks={failed}")
 assert actions == ["no-op"] and failed, "drift must be reported, never repaired"
 PY
+
+echo "[foundation] a failing mandatory control must stop admit at plan time"
+curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/anonymous_jira_closed" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+echo "  foundation ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
+if "$TF" -chdir="$ROOT/stages/admit" plan -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1; then
+  echo "  FAIL: admit planned without a ready foundation"; exit 1
+else
+  grep -q "not ready for Jira" /tmp/spike-plan.out && echo "  admit refused: $(grep -o 'Shared foundation is not ready for Jira[^.]*' /tmp/spike-plan.out | head -1)"
+fi
+curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/anonymous_jira_closed" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
+plan_expect_clean admit "foundation restored"
 
 echo "[destroy] removing a resource from configuration must be refused"
 if "$TF" -chdir="$ROOT/stages/identity" plan -no-color "${VARS[@]}" -var 'groups={lab-admins="x",lab-team="y"}' >/tmp/spike-plan.out 2>&1; then
