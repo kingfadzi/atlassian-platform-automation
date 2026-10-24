@@ -68,4 +68,8 @@ foundation = {
   domains               = [] # fill once the lab organisation has a verified domain
   product_access_groups = [] # empty = report default access groups without judging them
   banner_contains       = "governed"
+  # Free cannot restrict Jira permission schemes or Confluence spaces. This lab deliberately
+  # runs on Free and trial plans, so the two entitlement controls report findings and the
+  # deviation is carried as a dated exception in runtime/lab/exceptions.yaml.
+  minimum_plan = "Standard"
 }

@@ -23,9 +23,19 @@ def directories(org):
 
 @app.post("/admin/v2/orgs/<org>/workspaces")
 def workspaces(org):
+    """Product inventory with entitlements. Plans drive the foundation entitlement controls;
+    the real payload carries no trial flag, so neither does this one."""
     host = request.host_url.rstrip("/")
-    return jsonify({"data": [{"id": "ws-1", "attributes": {"typeKey": "jira-software", "hostUrl": host}},
-                             {"id": "ws-2", "attributes": {"typeKey": "confluence", "hostUrl": host}}], "links": {}})
+
+    def ws(wid, type_key, plan):
+        return {"id": wid, "attributes": {"typeKey": type_key, "hostUrl": host},
+                "relationships": {"entitlement": [{"attributes": {"plan": plan, "planKey": plan.lower()}}]}}
+
+    return jsonify({"data": [
+        ws("ws-1", "jira-software", "Free" if "jira_restriction_entitled" in failing else "Standard"),
+        ws("ws-2", "confluence", "Free" if "confluence_restriction_entitled" in failing else "Standard"),
+        ws("ws-3", "jira", "None"),   # administration shell: never carries a plan of its own
+    ], "links": {}})
 
 
 @app.get("/admin/v2/orgs/<org>/directories/<directory>/groups")

@@ -120,6 +120,7 @@ variable "foundation" {
     domains               = optional(list(string), [])   # verified domains expected on the organisation
     product_access_groups = optional(list(string), [])   # groups allowed as default product access; empty = not checked
     banner_contains       = optional(string, "governed") # text the announcement banner must carry
+    minimum_plan          = optional(string, "Standard") # lowest plan that supports configurable restriction
   })
   description = "Tenant specifics for the non-mandatory foundation controls (see policy/foundation.yaml)."
   default     = {}

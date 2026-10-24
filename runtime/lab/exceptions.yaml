@@ -1,1 +1,17 @@
-records: []
+# Lab exceptions (simulated authority; outside Git in anything but the lab).
+# govern/currency.py expires these against policy/gate.yaml windows_days.exception (30 days),
+# so the deviation cannot be forgotten: once stale it blocks the gate until renewed.
+records:
+  - id: free_and_trial_entitlement
+    kind: exception
+    recorded: 2026-10-24T00:00:00Z
+    by: USER-LAB-ADMIN
+    scope: "Confluence Free and trial product plans on the lab site"
+    reason: >-
+      The lab deliberately runs on Free and trial plans. Free supports neither configurable
+      Jira permission schemes nor Confluence space permissions, so restriction cannot be
+      proved on this site; jira_restriction_entitled and confluence_restriction_entitled
+      report findings rather than blocking.
+    compensating_control: >-
+      Synthetic data only (P-22). No real-data processing or production acceptance claim is
+      made from this site, and release evidence records the entitlement observed at the time.

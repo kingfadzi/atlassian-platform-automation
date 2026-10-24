@@ -36,6 +36,7 @@ output "details" {
     sitewide_browse      = local.sitewide
     domains              = local.domains_seen
     confluence_retention = local.retention
+    entitlements         = local.entitlements
   }
 }
 output "evaluated_on" {

@@ -86,6 +86,26 @@ curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/anonymous_jira_closed" >/d
 "$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
 plan_expect_clean admit "foundation restored"
 
+echo "[entitlement] a Free plan must be reported as a finding, not block admit"
+curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/confluence_restriction_entitled" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+"$TF" -chdir="$ROOT/stages/foundation" plan -no-color -out=/tmp/spike-ent.bin "${VARS[@]}" >/dev/null 2>&1
+"$TF" -chdir="$ROOT/stages/foundation" show -json /tmp/spike-ent.bin > /tmp/spike-ent.json
+echo "  entitlements = $("$TF" -chdir="$ROOT/stages/foundation" output -json details | python3 -c 'import json,sys; print(json.load(sys.stdin)["entitlements"])')"
+echo "  ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
+python3 - <<'PY'
+import json
+p = json.load(open("/tmp/spike-ent.json"))
+states = {c["address"]["to_display"]: c["status"] for c in p.get("checks", [])}
+msgs = [pr["message"] for c in p.get("checks", []) for i in c.get("instances", []) for pr in i.get("problems", [])]
+assert states.get("check.mandatory_controls") == "pass", "a Free plan must not block: entitlement is reported in the lab"
+assert any("confluence_restriction_entitled" in m for m in msgs), "Free Confluence must appear as a finding"
+print("  mandatory_controls=pass; finding raised for confluence_restriction_entitled")
+PY
+plan_expect_clean admit "entitlement reported only"
+curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/confluence_restriction_entitled" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
+
 echo "[destroy] removing a resource from configuration must be refused"
 if "$TF" -chdir="$ROOT/stages/identity" plan -no-color "${VARS[@]}" -var 'groups={lab-admins="x",lab-team="y"}' >/tmp/spike-plan.out 2>&1; then
   echo "  FAIL: plan accepted a removal"; exit 1

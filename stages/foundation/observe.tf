@@ -51,3 +51,12 @@ data "http" "announcement_banner" {
   url             = "${var.tenant.site_url}/rest/api/3/announcementBanner"
   request_headers = local.site_auth
 }
+
+# Entitlement per product instance. POST despite being a read: the Admin API lists
+# workspaces this way. The payload carries each product's plan but no trial flag.
+data "http" "workspaces" {
+  url             = "${var.admin_api_url}/v2/orgs/${var.tenant.org_id}/workspaces"
+  method          = "POST"
+  request_body    = jsonencode({ limit = 50 })
+  request_headers = merge(local.admin_auth, { Content-Type = "application/json" })
+}

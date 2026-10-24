@@ -46,6 +46,21 @@ controls:
     register: [SSCF-EXP-02]
 
   # Reported only in the lab
+  # Entitlement: Free supports neither configurable Jira permission schemes nor Confluence
+  # space permissions. Mandatory outside the lab; reported here because the lab runs on Free
+  # and trial plans under a recorded exception. Trial state is not in the API, so it cannot
+  # be observed - only the plan can.
+  - id: jira_restriction_entitled
+    title: Jira plan supports configurable permission schemes
+    method: observe
+    mandatory: false
+    depends: [jira]
+  - id: confluence_restriction_entitled
+    title: Confluence plan supports configurable space permissions
+    method: observe
+    mandatory: false
+    depends: [confluence]
+
   - id: no_sitewide_browse_grants
     title: No scheme grants BROWSE_PROJECTS to every licensed user
     method: observe
