@@ -3,12 +3,12 @@ variable "description" { type = string }
 variable "audience_groups" { type = list(string) }
 variable "admin_groups" { type = list(string) }
 variable "audience_permissions" {
-  type    = list(string)
-  default = ["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES", "ADD_COMMENTS", "CREATE_ATTACHMENTS", "ASSIGNABLE_USER"]
+  type        = list(string)
+  description = "From the selected standard (policy/standards). No default: modules carry no policy."
 }
 variable "admin_permissions" {
-  type    = list(string)
-  default = ["ADMINISTER_PROJECTS"]
+  type        = list(string)
+  description = "From the selected standard (policy/standards). No default: modules carry no policy."
 }
 
 variable "foundation_ready" {

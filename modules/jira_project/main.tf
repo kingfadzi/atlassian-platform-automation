@@ -32,10 +32,6 @@ resource "restapi_object" "project" {
       condition     = var.foundation_ready
       error_message = "Shared foundation is not ready for Jira: ${var.foundation_why}. Fix the foundation stage first."
     }
-    precondition {
-      condition     = can(regex("^[A-Z][A-Z0-9_]{1,9}$", var.key))
-      error_message = "Project key '${var.key}' must be 2-10 uppercase characters."
-    }
   }
 }
 

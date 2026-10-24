@@ -1,4 +1,4 @@
-# Stage: foundation, part 1. One observation per catalogue control that has an API.
+# Stage: foundation, part 1. HTTP reads behind the facts in facts.tf.
 # Anonymous probes carry no Authorization header on purpose.
 
 locals {

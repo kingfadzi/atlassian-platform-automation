@@ -17,3 +17,8 @@ windows_days:
   attestation: 90
   authority: 365
   exception: 30
+policy_files:                         # hashed into every ledger entry so decisions stay explainable
+  - policy/gate.yaml
+  - policy/foundation.yaml
+  - policy/intent_rules.yaml
+  - policy/standards                  # a directory: every standard file is hashed

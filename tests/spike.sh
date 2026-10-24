@@ -17,7 +17,7 @@ VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" \
   -var 'memberships={lab-admins=["USER-LAB-ADMIN"],lab-team=["USER-LAB-ALLOWED"]}')
 
 (cd "$ROOT/tests/stub" && python3 stub_tenant.py $PORT) >/tmp/stub_tenant.log 2>&1 &
-STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/admit/remote_state_override.tf' EXIT
+STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/admit/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"' EXIT
 sleep 2
 
 plan_expect_clean() { # stage label
@@ -91,7 +91,7 @@ curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/confluence_restriction_entit
 "$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
 "$TF" -chdir="$ROOT/stages/foundation" plan -no-color -out=/tmp/spike-ent.bin "${VARS[@]}" >/dev/null 2>&1
 "$TF" -chdir="$ROOT/stages/foundation" show -json /tmp/spike-ent.bin > /tmp/spike-ent.json
-echo "  entitlements = $("$TF" -chdir="$ROOT/stages/foundation" output -json details | python3 -c 'import json,sys; print(json.load(sys.stdin)["entitlements"])')"
+echo "  entitlements = $("$TF" -chdir="$ROOT/stages/foundation" output -json details | python3 -c 'import json,sys; print(json.load(sys.stdin)["product_plans"])')"
 echo "  ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
 python3 - <<'PY'
 import json
@@ -105,6 +105,17 @@ PY
 plan_expect_clean admit "entitlement reported only"
 curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/confluence_restriction_entitled" >/dev/null
 "$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
+
+echo "[policy] a requirement changed in YAML alone must change readiness (no HCL touched)"
+cp "$ROOT/policy/foundation.yaml" /tmp/spike-foundation.yaml
+# -i with a suffix, then remove it: the bare -i of GNU sed is a syntax error in BSD sed.
+sed -i.spike 's/require: { op: within_days, value: 7 }/require: { op: within_days, value: 0 }/' "$ROOT/policy/foundation.yaml"
+rm -f "$ROOT/policy/foundation.yaml.spike"
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1 || true
+echo "  audit window 7 -> 0 days: ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ') blocking = $("$TF" -chdir="$ROOT/stages/foundation" output -json blocking | tr -d '\n ')"
+cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
+echo "  restored: ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
 
 echo "[destroy] removing a resource from configuration must be refused"
 if "$TF" -chdir="$ROOT/stages/identity" plan -no-color "${VARS[@]}" -var 'groups={lab-admins="x",lab-team="y"}' >/tmp/spike-plan.out 2>&1; then

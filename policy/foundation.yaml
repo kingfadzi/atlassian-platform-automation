@@ -1,116 +1,167 @@
 # Shared foundation controls (lifecycle stage "establish the shared foundation").
-# This catalogue is the surface for change: add, retire or re-scope a control here.
 #
-# method:    probe   = representative flow test as an anonymous or denied caller
-#            observe = required-versus-actual read of a setting
-#            attest  = no API; a dated record in runtime/<env>/attestations.yaml with this id
-# mandatory: true blocks the dependent products until the control passes; false is reported only
-# depends:   which product readiness the control feeds
-# lab:       not_applicable marks controls outside the personal lab's plan or scope
+# Each control names a FACT the foundation stage knows how to observe (vocabulary at the top of
+# stages/foundation/facts.tf) and a REQUIREMENT placed on it. Change requirements here; HCL only
+# changes when a genuinely new fact is needed.
+#
+# require.op is one of eight comparisons and the set is a ceiling, not a starting point:
+#   equals               fact.value == value
+#   empty                length(fact.value) == 0
+#   at_least             fact.value >= value
+#   within_days          fact.value is a timestamp newer than now - value days
+#   attested_within_days attestation record with this control's id, recorded within value days
+#   superset_of          every element of value is in fact.value
+#   subset_of            every element of fact.value is in value
+#   contains             fact.value (string) contains value
+# value_from names a path in the intent's `foundation` object instead of a literal value; when it
+# resolves to an empty list the control is not_applicable (the intent has nothing to require).
+#
+# mandatory: true blocks the dependent products until satisfied; false is reported only.
+# lab: not_applicable marks controls outside the personal lab's plan or scope.
+# unknown (fact unreadable) counts as unsatisfied for a mandatory control.
 
-attestation_window_days: 90
-audit_freshness_days: 7
-confluence_audit_retention_min_days: 365
+version: 2026-10
+owner: PLATFORM-GOV
 
 controls:
   # Mandatory core for the lab
   - id: anonymous_jira_closed
     title: Anonymous Jira access closed
-    method: probe
+    register: [SSCF-EXP-01]
+    effective_from: 2026-10-20
     mandatory: true
     depends: [jira]
-    register: [SSCF-EXP-01]
+    fact: anonymous_jira_projects
+    require: { op: equals, value: 0 }
+
   - id: anonymous_confluence_closed
     title: Anonymous Confluence access closed
-    method: probe
+    register: [SSCF-EXP-01]
+    effective_from: 2026-10-20
     mandatory: true
     depends: [confluence]
-    register: [SSCF-EXP-01]
+    fact: anonymous_confluence_spaces
+    require: { op: equals, value: 0 }
+
   - id: no_public_scheme_grants
     title: No permission scheme grants to anyone on the internet
-    method: observe
+    register: [SSCF-EXP-01, SSCF-ACC-03]
+    effective_from: 2026-10-20
     mandatory: true
     depends: [jira]
-    register: [SSCF-EXP-01, SSCF-ACC-03]
+    fact: scheme_grants_to_anyone
+    require: { op: empty }
+
   - id: audit_collection_live
     title: Organisation audit collection live
-    method: observe
+    register: [SSCF-LOG-01]
+    effective_from: 2026-10-20
     mandatory: true
     depends: [jira, confluence]
-    register: [SSCF-LOG-01]
+    fact: latest_org_audit_event
+    require: { op: within_days, value: 7 }
+
   - id: public_links_off
     title: Public links and external sharing off
-    method: attest
+    register: [SSCF-EXP-02]
+    effective_from: 2026-10-20
     mandatory: true
     depends: [confluence]
-    register: [SSCF-EXP-02]
+    fact: attestation
+    require: { op: attested_within_days, value: 90 }
 
   # Reported only in the lab
-  # Entitlement: Free supports neither configurable Jira permission schemes nor Confluence
-  # space permissions. Mandatory outside the lab; reported here because the lab runs on Free
-  # and trial plans under a recorded exception. Trial state is not in the API, so it cannot
-  # be observed - only the plan can.
+  # Entitlement. Free supports neither configurable Jira permission schemes nor Confluence
+  # space permissions, so restriction cannot be proved on it. Mandatory outside the lab;
+  # reported here because this lab deliberately runs on Free and trial plans under the
+  # exception recorded in runtime/<env>/exceptions.yaml. Plan order used by the rank facts:
+  # 0 None, 1 Free, 2 Standard, 3 Premium, 4 Enterprise. Trial state is not exposed by the
+  # workspaces payload, so only the plan is observed.
   - id: jira_restriction_entitled
     title: Jira plan supports configurable permission schemes
-    method: observe
+    effective_from: 2026-10-24
     mandatory: false
     depends: [jira]
+    fact: jira_plan_rank
+    require: { op: at_least, value: 2 }
+
   - id: confluence_restriction_entitled
     title: Confluence plan supports configurable space permissions
-    method: observe
+    effective_from: 2026-10-24
     mandatory: false
     depends: [confluence]
+    fact: confluence_plan_rank
+    require: { op: at_least, value: 2 }
 
   - id: no_sitewide_browse_grants
     title: No scheme grants BROWSE_PROJECTS to every licensed user
-    method: observe
     mandatory: false
     depends: [jira]
+    fact: scheme_browse_for_all_licensed
+    require: { op: empty }
+
   - id: product_access_by_group
-    title: Product access granted through declared groups only
-    method: observe
+    title: Default product access groups are the declared ones
     mandatory: false
     depends: [jira]
+    fact: default_access_groups
+    require: { op: subset_of, value_from: foundation.product_access_groups }
+
   - id: verified_domains_known
-    title: Verified domains match the intent
-    method: observe
+    title: Verified domains include those in the intent
     mandatory: false
     depends: [jira, confluence]
+    fact: verified_domains
+    require: { op: superset_of, value_from: foundation.domains }
+
   - id: org_policies_enabled
     title: Data residency policy present and enabled
-    method: observe
     mandatory: false
     depends: [jira, confluence]
+    fact: enabled_policy_types
+    require: { op: superset_of, value: [data-residency] }
+
   - id: confluence_audit_retention
     title: Confluence audit retention meets the minimum
-    method: observe
     mandatory: false
     depends: [confluence]
+    fact: confluence_audit_retention_days
+    require: { op: at_least, value: 365 }
+
   - id: announcement_banner
     title: Announcement banner declares the governed estate
-    method: observe
     mandatory: false
     depends: [jira]
+    fact: announcement_banner_text
+    require: { op: contains, value_from: foundation.banner_contains }
+
   - id: evidence_retrieval
     title: Evidence retrieval from the ledger destination
-    method: observe
     mandatory: false
     depends: [jira, confluence]
+    fact: attestation
+    require: { op: attested_within_days, value: 90 }
     lab: not_applicable      # no evidence destination chosen yet
+
   - id: self_signup_off
     title: Self-signup and approved-domain signup off
-    method: attest
     mandatory: false
     depends: [jira, confluence]
+    fact: attestation
+    require: { op: attested_within_days, value: 90 }
+
   - id: authentication_policy
     title: Authentication policy, SSO and SCIM
-    method: attest
     mandatory: false
     depends: [jira, confluence]
+    fact: attestation
+    require: { op: attested_within_days, value: 90 }
     lab: not_applicable      # Atlassian Guard, outside the lab plan
+
   - id: alert_routing_tested
     title: Alert routing to responders tested
-    method: attest
     mandatory: false
     depends: [jira, confluence]
+    fact: attestation
+    require: { op: attested_within_days, value: 90 }
     lab: not_applicable      # no SIEM in the lab

@@ -6,7 +6,7 @@ variables {
   groups = { lab-admins = "a", lab-team = "t", lab-outsiders = "o" }
   jira = {
     scheme  = { name = "LAB Restricted", audience_groups = ["lab-admins", "lab-team"], admin_groups = ["lab-admins"] }
-    project = { key = "LABR", name = "LAB Restricted", type = "software", template = "x", lead_account_id = "u", assignee_type = "UNASSIGNED" }
+    project = { key = "LABR", name = "LAB Restricted", type = "software", template = "x", lead_account_id = "u" }
   }
   confluence = { space = { key = "LABP", name = "LAB Private", audience_groups = ["lab-admins", "lab-team"] } }
   governance = { business_authority = "BA-LAB-001", classification = "Internal", standard = "restricted-collab-v1", authority_records = ["AUTH-APP-01"] }
@@ -30,7 +30,7 @@ run "admin_not_in_audience_is_rejected" {
   variables {
     jira = {
       scheme  = { name = "LAB Restricted", audience_groups = ["lab-team"], admin_groups = ["lab-admins"] }
-      project = { key = "LABR", name = "LAB Restricted", type = "software", template = "x", lead_account_id = "u", assignee_type = "UNASSIGNED" }
+      project = { key = "LABR", name = "LAB Restricted", type = "software", template = "x", lead_account_id = "u" }
     }
   }
   expect_failures = [var.jira]
@@ -50,6 +50,25 @@ run "non_internal_classification_is_rejected" {
     governance = { business_authority = "BA-LAB-001", classification = "Confidential", standard = "restricted-collab-v1", authority_records = [] }
   }
   expect_failures = [var.governance]
+}
+
+run "unknown_standard_file_is_rejected" {
+  command = plan
+  variables {
+    governance = { business_authority = "BA-LAB-001", classification = "Internal", standard = "no-such-standard-v9", authority_records = [] }
+  }
+  expect_failures = [var.governance]
+}
+
+run "project_type_outside_standard_is_rejected" {
+  command = plan
+  variables {
+    jira = {
+      scheme  = { name = "LAB Restricted", audience_groups = ["lab-admins", "lab-team"], admin_groups = ["lab-admins"] }
+      project = { key = "LABR", name = "LAB Restricted", type = "service_desk", template = "x", lead_account_id = "u" }
+    }
+  }
+  expect_failures = [var.jira]
 }
 
 run "unversioned_standard_is_rejected" {

@@ -14,9 +14,10 @@ from pathlib import Path
 
 import yaml
 
-from govern import currency, gate, review
+from govern import currency, gate, provenance, review
 
-POLICY = Path(__file__).resolve().parent.parent / "policy" / "gate.yaml"
+ROOT = Path(__file__).resolve().parent.parent
+POLICY = ROOT / "policy" / "gate.yaml"
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
@@ -26,7 +27,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
     verdict = gate.evaluate(plan, rules, runtime.get("authority"))
     verdict.blocked.extend(currency.currency_findings(runtime, rules["windows_days"]))
     report = {"stage": args.stage, "ok": verdict.ok, "creates": verdict.creates,
-              "blocked": verdict.blocked, "reported": verdict.reported}
+              "blocked": verdict.blocked, "reported": verdict.reported,
+              "policy": {"files": provenance.policy_digests(ROOT, rules.get("policy_files", [])),
+                         "versions": provenance.plan_policy_versions(plan)}}
     print(json.dumps(report, indent=2))
     if args.ledger:
         ledger = Path(args.ledger)

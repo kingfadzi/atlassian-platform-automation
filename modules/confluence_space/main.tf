@@ -25,10 +25,6 @@ resource "restapi_object" "space" {
       condition     = var.foundation_ready
       error_message = "Shared foundation is not ready for Confluence: ${var.foundation_why}. Fix the foundation stage first."
     }
-    precondition {
-      condition     = can(regex("^[A-Z][A-Z0-9]{1,254}$", var.key))
-      error_message = "Space key '${var.key}' must be uppercase alphanumeric."
-    }
   }
 }
 
