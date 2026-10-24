@@ -10,3 +10,4 @@ plan.json
 plan.txt
 review.json
 ledger/
+.envrc.local

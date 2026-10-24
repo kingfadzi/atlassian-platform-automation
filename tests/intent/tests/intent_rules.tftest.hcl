@@ -67,3 +67,34 @@ run "same_person_as_admin_and_reviewer_is_rejected" {
   }
   expect_failures = [var.identities]
 }
+
+run "membership_in_undeclared_group_is_rejected" {
+  command = plan
+  variables {
+    memberships = { finance-all = ["acc-1"] }
+  }
+  expect_failures = [var.memberships]
+}
+
+run "duplicate_member_in_one_group_is_rejected" {
+  command = plan
+  variables {
+    memberships = { lab-team = ["acc-1", "acc-1"] }
+  }
+  expect_failures = [var.memberships]
+}
+
+run "empty_account_id_is_rejected" {
+  command = plan
+  variables {
+    memberships = { lab-team = [" "] }
+  }
+  expect_failures = [var.memberships]
+}
+
+run "valid_memberships_plan" {
+  command = plan
+  variables {
+    memberships = { lab-admins = ["acc-admin"], lab-team = ["acc-admin", "acc-allowed"] }
+  }
+}

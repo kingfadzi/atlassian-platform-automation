@@ -12,20 +12,37 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 ids = itertools.count(10000)
-db = {"groups": {}, "schemes": {}, "projects": {}, "spaces": {}, "space_perms": {}}
+db = {"groups": {}, "group_members": {}, "schemes": {}, "projects": {}, "spaces": {}, "space_perms": {}}
 ORG, DIRECTORY = "org-1", "dir-1"
 
 
-def caller():
-    """'anonymous', 'denied' or 'member' from the Authorization header (test identities)."""
+# Test identities: Basic-auth email -> accountId, mirroring the placeholders in envs/lab/lab.tfvars.
+ACCOUNTS = {"admin@lab": "USER-LAB-ADMIN", "allowed@lab": "USER-LAB-ALLOWED", "denied@lab": "USER-LAB-DENIED"}
+
+
+def caller_account():
+    """accountId of the authenticated caller, or None when anonymous."""
     import base64
     auth = request.headers.get("Authorization", "")
-    if not auth:
-        return "anonymous"
     if auth.startswith("Basic "):
         email = base64.b64decode(auth[6:]).decode().split(":")[0]
-        return "denied" if "denied" in email else "member"
-    return "member"
+        return ACCOUNTS.get(email, "USER-UNKNOWN")
+    if auth.startswith("Bearer "):
+        return ACCOUNTS["admin@lab"]
+    return None
+
+
+def caller_groups():
+    """Names of the managed groups the caller is actually a member of.
+
+    Authorisation in this stub follows real membership, so the release probes only pass when
+    the identity stage has placed the account in a group that holds a grant.
+    """
+    account = caller_account()
+    if account is None:
+        return set()
+    return {db["groups"][gid]["name"] for gid, members in db["group_members"].items()
+            if account in members and gid in db["groups"]}
 
 
 # Admin API
@@ -111,6 +128,25 @@ def get_grant(sid, pid):
     return (jsonify(found), 200) if found else ("", 404)
 
 
+@app.post("/rest/api/3/group/user")
+def add_group_member():
+    gid = request.args.get("groupId", "")
+    if gid not in db["groups"]:
+        return ("", 404)
+    members = db["group_members"].setdefault(gid, [])
+    account = request.get_json()["accountId"]
+    if account not in members:
+        members.append(account)
+    return jsonify(db["groups"][gid])                 # real API answers with the group, not the membership
+
+
+@app.get("/rest/api/3/group/member")
+def list_group_members():
+    members = db["group_members"].get(request.args.get("groupId", ""), [])
+    return jsonify({"values": [{"accountId": a, "active": True, "accountType": "atlassian"} for a in members],
+                    "startAt": 0, "maxResults": 200, "total": len(members), "isLast": True})
+
+
 @app.post("/rest/api/3/project")
 def create_project():
     body = request.get_json()
@@ -123,11 +159,15 @@ def create_project():
 
 @app.get("/rest/api/3/project/<key>")
 def get_project(key):
-    if caller() == "anonymous":
+    if caller_account() is None:
         return ("", 401)
     project = next((p for p in db["projects"].values() if key in (p["key"], str(p["id"]))), None)
-    if not project or caller() == "denied":
+    if not project:
         return ("", 404)
+    scheme = db["schemes"].get(project["_scheme"], {})
+    audience = {g["holder"].get("parameter") for g in scheme.get("permissions", [])}
+    if not caller_groups() & audience:
+        return ("", 404)                              # Jira hides projects the caller cannot browse
     return jsonify({k: v for k, v in project.items() if k != "_scheme"})
 
 
@@ -160,7 +200,9 @@ def get_space(sid):
 @app.get("/wiki/api/v2/spaces")
 def list_spaces():
     keys = request.args.get("keys", "").split(",")
-    visible = [] if caller() in ("anonymous", "denied") else [s for s in db["spaces"].values() if s["key"] in keys]
+    groups = caller_groups()
+    visible = [s for s in db["spaces"].values() if s["key"] in keys
+               and groups & {p["subject"]["identifier"] for p in db["space_perms"].get(s["key"], [])}]
     return jsonify({"results": visible, "_links": {}})
 
 
@@ -187,6 +229,13 @@ def mutate(collection, key):
     key = int(key) if key.isdigit() else key
     db[collection][key].update(request.get_json())
     return jsonify(db[collection][key])
+
+
+@app.post("/__stub/unmember/<gid>")
+def unmember(gid):
+    """Test control: empty a group's membership to simulate an out-of-band removal."""
+    db["group_members"][gid] = []
+    return jsonify(db["group_members"])
 
 
 @app.get("/__stub/dump")

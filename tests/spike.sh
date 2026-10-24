@@ -47,6 +47,21 @@ print(f"  actions={actions} drifted={len(p.get('resource_drift', []))} failed_ch
 assert actions == ["no-op"] and failed, "drift must be reported, never repaired"
 PY
 
+echo "[drift] remove a group member out of band, expect a failing check and no actions"
+GID=$("$TF" -chdir="$ROOT/stages/identity" output -json group_ids | python3 -c 'import json,sys; print(json.load(sys.stdin)["lab-team"])')
+curl -s -X POST "http://127.0.0.1:$PORT/__stub/unmember/$GID" >/dev/null
+"$TF" -chdir="$ROOT/stages/identity" plan -no-color -out=/tmp/spike-member.bin "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+"$TF" -chdir="$ROOT/stages/identity" show -json /tmp/spike-member.bin > /tmp/spike-member.json
+python3 - <<'PY'
+import json
+p = json.load(open("/tmp/spike-member.json"))
+actions = sorted({a for c in p.get("resource_changes", []) for a in c["change"]["actions"]})
+failed = [c["address"]["to_display"] for c in p.get("checks", []) if c["status"] == "fail"]
+print(f"  actions={actions} failed_checks={failed}")
+assert actions == ["no-op"], "a removed member must never be re-added by automation"
+assert any("membership_present" in f for f in failed), "removed member must fail membership_present"
+PY
+
 echo "[destroy] removing a resource from configuration must be refused"
 if "$TF" -chdir="$ROOT/stages/identity" plan -no-color "${VARS[@]}" -var 'groups={lab-admins="x",lab-team="y"}' >/tmp/spike-plan.out 2>&1; then
   echo "  FAIL: plan accepted a removal"; exit 1

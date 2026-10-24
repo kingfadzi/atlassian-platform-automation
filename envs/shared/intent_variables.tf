@@ -23,6 +23,24 @@ variable "groups" {
   }
 }
 
+variable "memberships" {
+  type        = map(list(string))
+  default     = {}
+  description = "Managed group memberships: group name => Atlassian accountIds. Empty until real accountIds are known."
+  validation {
+    condition     = length(setsubtract(keys(var.memberships), keys(var.groups))) == 0
+    error_message = "Every key in memberships must be a group declared in groups."
+  }
+  validation {
+    condition     = alltrue([for ids in values(var.memberships) : length(ids) == length(distinct(ids))])
+    error_message = "memberships must not list the same accountId twice in one group."
+  }
+  validation {
+    condition     = alltrue([for ids in values(var.memberships) : alltrue([for id in ids : length(trimspace(id)) > 0])])
+    error_message = "memberships accountIds must not be empty."
+  }
+}
+
 variable "jira" {
   type = object({
     scheme = object({
