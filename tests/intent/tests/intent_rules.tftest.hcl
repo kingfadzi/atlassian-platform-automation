@@ -6,7 +6,7 @@ variables {
   groups = { lab-admins = "a", lab-team = "t", lab-outsiders = "o" }
   jira = {
     scheme  = { name = "LAB Restricted", audience_groups = ["lab-admins", "lab-team"], admin_groups = ["lab-admins"] }
-    project = { key = "LABR", name = "LAB Restricted", type = "software", template = "x", lead_account_id = "u", assignee_type = "UNASSIGNED" }
+    project = { key = "LABR", name = "LAB Restricted", type = "software", template = "x", lead_account_id = "u" }
   }
   confluence = { space = { key = "LABP", name = "LAB Private", audience_groups = ["lab-admins", "lab-team"] } }
   governance = { business_authority = "BA-LAB-001", classification = "Internal", standard = "restricted-collab-v1", authority_records = ["AUTH-APP-01"] }
@@ -30,7 +30,7 @@ run "admin_not_in_audience_is_rejected" {
   variables {
     jira = {
       scheme  = { name = "LAB Restricted", audience_groups = ["lab-team"], admin_groups = ["lab-admins"] }
-      project = { key = "LABR", name = "LAB Restricted", type = "software", template = "x", lead_account_id = "u", assignee_type = "UNASSIGNED" }
+      project = { key = "LABR", name = "LAB Restricted", type = "software", template = "x", lead_account_id = "u" }
     }
   }
   expect_failures = [var.jira]

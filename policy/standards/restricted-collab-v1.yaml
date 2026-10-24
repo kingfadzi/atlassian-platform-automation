@@ -1,0 +1,24 @@
+# Asset standard: restricted collaboration. Selected by governance.standard in the intent.
+# A changed standard is a new file with `supersedes`; this file stays so assets admitted under it
+# remain explainable. Modules carry no policy defaults; everything they grant comes from here.
+id: restricted-collab-v1
+title: Restricted collaboration asset (Jira project + Confluence space, group-scoped audience)
+register: [SSCF-ACC-03, SSCF-EXP-01]
+owner: PLATFORM-GOV
+effective_from: 2026-10-20
+supersedes: null
+
+jira:
+  project_types: [software, business]
+  audience_permissions: [BROWSE_PROJECTS, CREATE_ISSUES, EDIT_ISSUES, ADD_COMMENTS, CREATE_ATTACHMENTS, ASSIGNABLE_USER]
+  admin_permissions: [ADMINISTER_PROJECTS]
+  assignee_type: UNASSIGNED
+
+confluence:
+  audience_operations: [read]
+
+description_template: "${business_authority} | ${standard} | ${classification} | managed by platform automation"
+
+release:
+  denied_status_codes: [401, 403, 404]
+  anonymous_status_codes: [401, 403, 404]

@@ -5,8 +5,8 @@ variable "project_type_key" { type = string }
 variable "project_template_key" { type = string }
 variable "lead_account_id" { type = string }
 variable "assignee_type" {
-  type    = string
-  default = "UNASSIGNED"
+  type        = string
+  description = "From the selected standard (policy/standards)."
 }
 variable "permission_scheme_id" { type = string }
 variable "site_url" { type = string }

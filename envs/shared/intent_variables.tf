@@ -36,7 +36,6 @@ variable "jira" {
       type            = string
       template        = string
       lead_account_id = string
-      assignee_type   = optional(string, "UNASSIGNED")
     })
   })
   validation {

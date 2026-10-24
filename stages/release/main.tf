@@ -3,6 +3,7 @@
 # Each probe is a data source; each expectation is a check that lands in the plan JSON.
 
 locals {
+  standard = yamldecode(file("${path.module}/../../policy/standards/${var.governance.standard}.yaml"))
   probes = {
     allowed   = local.allowed_auth
     denied    = local.denied_auth
@@ -32,11 +33,11 @@ check "project_visibility" {
     error_message = "Allowed identity cannot read project ${var.jira.project.key} (HTTP ${data.http.project["allowed"].status_code})."
   }
   assert {
-    condition     = contains([401, 403, 404], data.http.project["denied"].status_code)
+    condition     = contains(local.standard.release.denied_status_codes, data.http.project["denied"].status_code)
     error_message = "Denied identity can read project ${var.jira.project.key} (HTTP ${data.http.project["denied"].status_code})."
   }
   assert {
-    condition     = contains([401, 403, 404], data.http.project["anonymous"].status_code)
+    condition     = contains(local.standard.release.anonymous_status_codes, data.http.project["anonymous"].status_code)
     error_message = "Anonymous caller can read project ${var.jira.project.key} (HTTP ${data.http.project["anonymous"].status_code})."
   }
 }
