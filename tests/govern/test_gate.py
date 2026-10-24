@@ -43,3 +43,11 @@ def test_currency_windows():
     runtime = {"attestations": {"records": [{"id": "custody", "kind": "attestation", "recorded": date(2026, 1, 1)}]}}
     assert currency.currency_findings(runtime, RULES["windows_days"], today=date(2026, 10, 23))
     assert not currency.currency_findings(runtime, RULES["windows_days"], today=date(2026, 1, 20))
+
+
+def test_foundation_fixture_blocks_mandatory_and_reports_findings():
+    plan = json.loads((ROOT / "tests" / "govern" / "fixtures" / "plan_foundation_blocked.json").read_text())
+    verdict = gate.evaluate(plan, RULES)
+    assert any("mandatory_controls" in b and "anonymous_jira_closed" in b for b in verdict.blocked)
+    assert any("report_controls" in r for r in verdict.reported)
+    assert not any("report_controls" in b for b in verdict.blocked)

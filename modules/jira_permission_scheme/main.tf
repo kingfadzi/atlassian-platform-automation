@@ -28,6 +28,10 @@ resource "restapi_object" "scheme" {
   lifecycle {
     prevent_destroy = true
     precondition {
+      condition     = var.foundation_ready
+      error_message = "Shared foundation is not ready for Jira: ${var.foundation_why}. Fix the foundation stage first."
+    }
+    precondition {
       condition     = length(setsubtract(var.admin_groups, var.audience_groups)) == 0
       error_message = "Admin groups must be a subset of audience groups (${var.name})."
     }

@@ -11,6 +11,8 @@ on every resource, blocked actions in the gate, and no destroy job in the pipeli
 | Place an account in a managed group | `memberships` in `envs/lab/lab.tfvars` |
 | Change a structural rule (scope, subsets, classification) | `envs/shared/intent_variables.tf` |
 | Change what the gate blocks or reports | `policy/gate.yaml` |
+| Add, retire or re-scope a shared foundation control | `policy/foundation.yaml` (plus one observation in `stages/foundation/observe.tf` if it has an API) |
+| Record a manual foundation setting | `runtime/<env>/attestations.yaml` |
 | Add a resource kind | a new folder under `modules/` with one `restapi_object`, a `check`, and a stage wiring |
 | Add an observation or probe | a `data "http"` plus a `check` in `stages/bootstrap` or `stages/release` |
 
@@ -19,15 +21,26 @@ on every resource, blocked actions in the gate, and no destroy job in the pipeli
 ```
 envs/lab/lab.tfvars            intent (operator surface, no secrets)
 envs/shared/*.tf               intent rules, provider aliases, credentials, backend; symlinked into stages
-stages/{bootstrap,identity,admit,release}   one root module and one GitLab state each
+stages/{bootstrap,identity,foundation,admit,release}   one root module and one GitLab state each
 modules/*                      directory_group, group_membership, jira_permission_scheme, jira_project,
                                confluence_space, confluence_space_permission
 policy/gate.yaml               gate rules
+policy/foundation.yaml         shared foundation control catalogue (mandatory core + reported)
 govern/                        gate, currency, review, cli (about 200 lines)
 tests/intent                   terraform test for the intent rules (no tenant needed)
 tests/govern                   gate unit tests on recorded plan JSON
 tests/stub, tests/spike.sh     stateful stub of the Atlassian endpoints and the end-to-end spike
 ```
+
+## Lifecycle
+
+bootstrap (observe tenancy) → identity (groups) → foundation (shared controls: probe, observe, attest)
+→ admit (scheme, project, space) → release (allowed/denied/anonymous probes) → operate (scheduled drift).
+Foundation publishes `ready = { jira, confluence }`; admit reads it through `terraform_remote_state`
+and refuses to plan a product's assets unless that product is ready and the evaluation is newer than
+`windows_days.foundation`. A failing mandatory control blocks only the products that depend on it.
+Lab mandatory core: anonymous Jira closed, anonymous Confluence closed, no public scheme grants,
+audit collection live, public links attested off. The other ten controls are reported, not blocking.
 
 ## Local
 

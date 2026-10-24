@@ -14,7 +14,7 @@ fmt:
 	$(TF) fmt -check -recursive
 
 validate:
-	@for s in bootstrap identity admit release; do \
+	@for s in bootstrap identity foundation admit release; do \
 	  $(TF) -chdir=stages/$$s init -backend=false -input=false >/dev/null && $(TF) -chdir=stages/$$s validate || exit 1; done
 
 test:

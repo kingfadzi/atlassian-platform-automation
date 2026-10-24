@@ -62,4 +62,5 @@ def _classify_checks(plan: dict, rules: dict, verdict: Verdict) -> None:
             continue
         problems = [p["message"] for inst in check.get("instances", []) for p in inst.get("problems", [])]
         line = f"{check['address']['to_display']}: " + " | ".join(problems)
-        (verdict.blocked if rules["failures_block"] else verdict.reported).append(line)
+        report_only = check["address"].get("name", "").startswith(rules.get("report_prefix", "report_"))
+        (verdict.reported if report_only or not rules["failures_block"] else verdict.blocked).append(line)

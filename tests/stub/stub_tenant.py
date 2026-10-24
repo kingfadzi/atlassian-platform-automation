@@ -1,50 +1,15 @@
 """Stateful stub of the Atlassian endpoints the modules use, with the real response shapes.
+Test double only. Run: python tests/stub/stub_tenant.py 8089  (STUB_SHUFFLE=1 reverses grant order)."""
 
-Test double only. Run: python tests/stub/stub_tenant.py 8089
-Set STUB_SHUFFLE=1 to return permission-scheme grants in reversed order (drift test).
-"""
-
-import itertools
 import os
 import sys
 
 from flask import Flask, jsonify, request
 
+from foundation_endpoints import foundation
+from state import DIRECTORY, caller, caller_account, caller_groups, db, failing, ids
+
 app = Flask(__name__)
-ids = itertools.count(10000)
-db = {"groups": {}, "group_members": {}, "schemes": {}, "projects": {}, "spaces": {}, "space_perms": {}}
-ORG, DIRECTORY = "org-1", "dir-1"
-
-
-# Test identities: Basic-auth email -> accountId, mirroring the placeholders in envs/lab/lab.tfvars.
-ACCOUNTS = {"admin@lab": "USER-LAB-ADMIN", "allowed@lab": "USER-LAB-ALLOWED", "denied@lab": "USER-LAB-DENIED"}
-
-
-def caller_account():
-    """accountId of the authenticated caller, or None when anonymous."""
-    import base64
-    auth = request.headers.get("Authorization", "")
-    if auth.startswith("Basic "):
-        email = base64.b64decode(auth[6:]).decode().split(":")[0]
-        return ACCOUNTS.get(email, "USER-UNKNOWN")
-    if auth.startswith("Bearer "):
-        return ACCOUNTS["admin@lab"]
-    return None
-
-
-def caller_groups():
-    """Names of the managed groups the caller is actually a member of.
-
-    Authorisation in this stub follows real membership, so the release probes only pass when
-    the identity stage has placed the account in a group that holds a grant.
-    """
-    account = caller_account()
-    if account is None:
-        return set()
-    return {db["groups"][gid]["name"] for gid, members in db["group_members"].items()
-            if account in members and gid in db["groups"]}
-
-
 # Admin API
 @app.get("/admin/v1/orgs/<org>")
 def get_org(org):
@@ -84,7 +49,6 @@ def create_group(org, directory):
 def get_group(org, directory, gid):
     group = db["groups"].get(gid)
     return (jsonify({"data": group}), 200) if group else ("", 404)
-
 
 # Jira
 @app.get("/rest/api/3/myself")
@@ -176,7 +140,6 @@ def project_scheme(key):
     project = next((p for p in db["projects"].values() if key in (p["key"], str(p["id"]))), None)
     return jsonify(db["schemes"][project["_scheme"]]) if project else ("", 404)
 
-
 # Confluence
 @app.get("/wiki/rest/api/user/current")
 def current_user():
@@ -200,8 +163,10 @@ def get_space(sid):
 @app.get("/wiki/api/v2/spaces")
 def list_spaces():
     keys = request.args.get("keys", "").split(",")
+    if caller() == "anonymous" and "anonymous_confluence_closed" in failing:
+        return jsonify({"results": [{"id": "9", "key": "PUB", "name": "Public"}], "_links": {}})
     groups = caller_groups()
-    visible = [s for s in db["spaces"].values() if s["key"] in keys
+    visible = [s for s in db["spaces"].values() if (s["key"] in keys or not keys[0])
                and groups & {p["subject"]["identifier"] for p in db["space_perms"].get(s["key"], [])}]
     return jsonify({"results": visible, "_links": {}})
 
@@ -242,6 +207,8 @@ def unmember(gid):
 def dump():
     return jsonify({k: list(v.values()) if isinstance(v, dict) else v for k, v in db.items()})
 
+
+app.register_blueprint(foundation)
 
 if __name__ == "__main__":
     app.run(port=int(sys.argv[1]) if len(sys.argv) > 1 else 8089)
