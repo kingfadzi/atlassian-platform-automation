@@ -52,6 +52,25 @@ run "non_internal_classification_is_rejected" {
   expect_failures = [var.governance]
 }
 
+run "unknown_standard_file_is_rejected" {
+  command = plan
+  variables {
+    governance = { business_authority = "BA-LAB-001", classification = "Internal", standard = "no-such-standard-v9", authority_records = [] }
+  }
+  expect_failures = [var.governance]
+}
+
+run "project_type_outside_standard_is_rejected" {
+  command = plan
+  variables {
+    jira = {
+      scheme  = { name = "LAB Restricted", audience_groups = ["lab-admins", "lab-team"], admin_groups = ["lab-admins"] }
+      project = { key = "LABR", name = "LAB Restricted", type = "service_desk", template = "x", lead_account_id = "u" }
+    }
+  }
+  expect_failures = [var.jira]
+}
+
 run "unversioned_standard_is_rejected" {
   command = plan
   variables {

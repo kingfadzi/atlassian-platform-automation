@@ -3,7 +3,6 @@
 # Each probe is a data source; each expectation is a check that lands in the plan JSON.
 
 locals {
-  standard = yamldecode(file("${path.module}/../../policy/standards/${var.governance.standard}.yaml"))
   probes = {
     allowed   = local.allowed_auth
     denied    = local.denied_auth

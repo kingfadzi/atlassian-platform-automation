@@ -1,0 +1,13 @@
+# Structural rules the intent must satisfy. Read by the variable validations in
+# envs/shared/intent_variables.tf, which fail at `terraform validate` before any API call.
+# Change a rule here, not in HCL. Product-type rules come from the selected standard.
+version: 2026-10
+owner: PLATFORM-GOV
+
+admitted_classifications: [Internal]          # P-22: the personal lab admits Internal only
+standard_id_pattern: "^[a-z0-9-]+-v[0-9]+$"   # standards are versioned files in policy/standards
+project_key_pattern: "^[A-Z][A-Z0-9_]{1,9}$"
+space_key_pattern: "^[A-Z][A-Z0-9]{1,254}$"
+admins_must_be_subset_of_audience: true
+audience_groups_must_be_declared: true
+distinct_identities: [admin, reviewer, allowed, denied]

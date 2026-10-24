@@ -1,5 +1,11 @@
-# Shape and rules of the intent. Symlinked into every stage root so one definition serves all.
-# Structural rules live here and fail at `terraform validate`, before any API call.
+# Shape of the intent and the structural rules it must satisfy. The rules are data
+# (policy/intent_rules.yaml and the selected standard); the validations only apply them.
+# Terraform >= 1.9 lets a validation read locals and other variables.
+
+locals {
+  rules    = yamldecode(file("${path.module}/../../policy/intent_rules.yaml"))
+  standard = yamldecode(file("${path.module}/../../policy/standards/${var.governance.standard}.yaml"))
+}
 
 variable "tenant" {
   type = object({
@@ -39,16 +45,20 @@ variable "jira" {
     })
   })
   validation {
-    condition     = length(setsubtract(var.jira.scheme.admin_groups, var.jira.scheme.audience_groups)) == 0
-    error_message = "jira.scheme.admin_groups must be a subset of audience_groups."
+    condition     = !local.rules.admins_must_be_subset_of_audience || length(setsubtract(var.jira.scheme.admin_groups, var.jira.scheme.audience_groups)) == 0
+    error_message = "jira.scheme.admin_groups must be a subset of audience_groups (policy/intent_rules.yaml)."
   }
   validation {
-    condition     = length(setsubtract(var.jira.scheme.audience_groups, keys(var.groups))) == 0
-    error_message = "jira.scheme.audience_groups must all be declared in groups."
+    condition     = !local.rules.audience_groups_must_be_declared || length(setsubtract(var.jira.scheme.audience_groups, keys(var.groups))) == 0
+    error_message = "jira.scheme.audience_groups must all be declared in groups (policy/intent_rules.yaml)."
   }
   validation {
-    condition     = contains(["software", "business", "service_desk"], var.jira.project.type)
-    error_message = "jira.project.type must be software, business or service_desk."
+    condition     = contains(local.standard.jira.project_types, var.jira.project.type)
+    error_message = "jira.project.type must be one of the selected standard's project_types: ${join(", ", local.standard.jira.project_types)}."
+  }
+  validation {
+    condition     = can(regex(local.rules.project_key_pattern, var.jira.project.key))
+    error_message = "jira.project.key must match ${local.rules.project_key_pattern} (policy/intent_rules.yaml)."
   }
 }
 
@@ -61,8 +71,12 @@ variable "confluence" {
     })
   })
   validation {
-    condition     = length(setsubtract(var.confluence.space.audience_groups, keys(var.groups))) == 0
-    error_message = "confluence.space.audience_groups must all be declared in groups."
+    condition     = !local.rules.audience_groups_must_be_declared || length(setsubtract(var.confluence.space.audience_groups, keys(var.groups))) == 0
+    error_message = "confluence.space.audience_groups must all be declared in groups (policy/intent_rules.yaml)."
+  }
+  validation {
+    condition     = can(regex(local.rules.space_key_pattern, var.confluence.space.key))
+    error_message = "confluence.space.key must match ${local.rules.space_key_pattern} (policy/intent_rules.yaml)."
   }
 }
 
@@ -74,12 +88,16 @@ variable "governance" {
     authority_records  = list(string)
   })
   validation {
-    condition     = var.governance.classification == "Internal"
-    error_message = "Only Internal classification is admitted in the lab (P-22)."
+    condition     = contains(local.rules.admitted_classifications, var.governance.classification)
+    error_message = "governance.classification must be one of ${join(", ", local.rules.admitted_classifications)} (policy/intent_rules.yaml)."
   }
   validation {
-    condition     = can(regex("-v[0-9]+$", var.governance.standard))
-    error_message = "governance.standard must be versioned, e.g. restricted-collab-v1."
+    condition     = can(regex(local.rules.standard_id_pattern, var.governance.standard))
+    error_message = "governance.standard must match ${local.rules.standard_id_pattern} (policy/intent_rules.yaml)."
+  }
+  validation {
+    condition     = fileexists("${path.module}/../../policy/standards/${var.governance.standard}.yaml")
+    error_message = "No standard file policy/standards/${var.governance.standard}.yaml."
   }
 }
 
@@ -91,8 +109,8 @@ variable "identities" {
     denied   = string
   })
   validation {
-    condition     = length(distinct(values(var.identities))) == 4
-    error_message = "admin, reviewer, allowed and denied identities must be distinct."
+    condition     = length(distinct([for k in local.rules.distinct_identities : var.identities[k]])) == length(local.rules.distinct_identities)
+    error_message = "Identities ${join(", ", local.rules.distinct_identities)} must be distinct (policy/intent_rules.yaml)."
   }
 }
 

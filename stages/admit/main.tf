@@ -6,8 +6,6 @@
 # The asset standard is data: policy/standards/<governance.standard>.yaml. Nothing granted
 # below is decided in HCL.
 locals {
-  standard_file = "${path.module}/../../policy/standards/${var.governance.standard}.yaml"
-  standard      = yamldecode(file(local.standard_file))
   stamp = templatestring(local.standard.description_template, {
     business_authority = var.governance.business_authority
     standard           = var.governance.standard
