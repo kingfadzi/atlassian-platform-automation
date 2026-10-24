@@ -1,0 +1,20 @@
+# Desired workflow of the Asset issue type in the treatment project. Jira Cloud has no import for
+# this, so an operator builds it in the console exactly as declared and records the attestation
+# `asset_workflow` with this file's sha256 (docs/runbook-foundation.md). Changing this file
+# invalidates the attestation until the workflow is rebuilt and re-recorded.
+name: Asset treatment
+statuses:
+  - { name: Requested,  category: new }
+  - { name: Approved,   category: indeterminate }
+  - { name: Active,     category: indeterminate }   # the instance exists and conforms
+  - { name: Attention,  category: indeterminate }   # conform flagged a finding (phase 4 executor)
+  - { name: Archived,   category: done }
+  - { name: Declined,   category: done }
+transitions:
+  - { from: Requested, to: Approved,  name: Approve,  condition: "approver in platform-admin role" }
+  - { from: Requested, to: Declined,  name: Decline }
+  - { from: Approved,  to: Active,    name: Provisioned, post: "automation created the instance and stamped it" }
+  - { from: Active,    to: Attention, name: Flag }
+  - { from: Attention, to: Active,    name: Resolved }
+  - { from: Active,    to: Archived,  name: Archive }
+  - { from: Attention, to: Archived,  name: Archive }

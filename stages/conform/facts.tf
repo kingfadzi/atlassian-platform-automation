@@ -11,11 +11,16 @@
 #   last_activity          string  RFC 3339 of the latest issue update or page change
 #   space_role_names       list    (confluence) role names assigned on the space
 #   public_principals      list    holders that make the instance public (policy.public)
+#   asset_record           bool    an Asset issue in the treatment service names this instance
 
 locals {
   scheme_to_standard = { for id, s in local.contract.standards : tostring(s.scheme_id) => id }
-  label_prefix       = local.policy.stamp.confluence_label_prefix
-  pub                = local.policy.public
+  asset_keys = toset(local.treatment == null ? [] : [
+    for i in try(jsondecode(data.http.asset_records[0].response_body).issues, []) : tostring(try(i.fields[local.asset_fields], ""))
+  ])
+  asset_known  = local.treatment != null && try(data.http.asset_records[0].status_code, 0) == 200
+  label_prefix = local.policy.stamp.confluence_label_prefix
+  pub          = local.policy.public
 
   # Jira projects --------------------------------------------------------------------------
   project_stamp = { for k, p in local.projects : k => try(tostring(p.properties[local.stamp_prop]), null) }
@@ -47,6 +52,7 @@ locals {
       known = can(p.insight.lastIssueUpdateTime)
       value = try(replace(p.insight.lastIssueUpdateTime, "/([+-]\\d{2})(\\d{2})$/", "$1:$2"), null)
     }
+    asset_record = { known = local.asset_known, value = contains(local.asset_keys, "jira:${k}") }
     public_principals = {
       known = data.http.project_scheme[k].status_code == 200
       value = [for g in try(jsondecode(data.http.project_scheme[k].response_body).permissions, []) : g.holder.type
@@ -72,6 +78,7 @@ locals {
       known = data.http.space_roles[k].status_code == 200
       value = distinct([for a in try(jsondecode(data.http.space_roles[k].response_body).results, []) : lookup(local.space_role_name, tostring(a.roleId), "?")])
     }
+    asset_record = { known = local.asset_known, value = contains(local.asset_keys, "confluence:${k}") }
     public_principals = {
       known = data.http.space_permissions[k].status_code == 200
       value = [for p in local.space_perms[k] : "${p.principal.type}:${try(p.principal.id, "")}"

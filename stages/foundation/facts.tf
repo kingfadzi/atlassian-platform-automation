@@ -19,6 +19,7 @@
 #   confluence_space_roles           list     space role names available on the site
 #   site_admin_accounts              list     account ids in the admin groups named in policy/identities.yaml
 #   exceptional_identities_last_review string RFC 3339 of the oldest review in policy/identities.yaml
+#   (treatment.tf)  service_project_keys, issue_type_names, custom_field_names, treatment_request_types, import_current_<id>
 
 locals {
   http = {
@@ -37,7 +38,7 @@ locals {
   retention_unit = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
   attestations   = try(yamldecode(file("${var.runtime_dir}/attestations.yaml")).records, [])
 
-  facts = {
+  tenant_facts = {
     anonymous_jira_projects = {
       known = contains([200, 401], local.status.anon_jira)
       value = local.status.anon_jira == 401 ? 0 : try(local.json.anon_jira.total, 0)
@@ -110,4 +111,8 @@ locals {
       value = try(sort([for a in local.identities.accounts : a.reviewed])[0], null)
     }
   }
+}
+
+locals {
+  facts = merge(local.tenant_facts, local.treatment_facts) # treatment facts: treatment.tf
 }

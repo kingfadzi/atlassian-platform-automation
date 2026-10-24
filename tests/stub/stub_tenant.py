@@ -9,6 +9,7 @@ from flask import Flask, jsonify, request
 from foundation_endpoints import default_scheme, foundation
 from provision_endpoints import provision
 from estate_endpoints import estate
+from treatment_endpoints import treatment
 from state import DIRECTORY, caller, db, failing, ids
 
 app = Flask(__name__)
@@ -120,6 +121,7 @@ def dump():
 app.register_blueprint(foundation)
 app.register_blueprint(provision)
 app.register_blueprint(estate)
+app.register_blueprint(treatment)
 
 if __name__ == "__main__":
     app.run(port=int(sys.argv[1]) if len(sys.argv) > 1 else 8089)

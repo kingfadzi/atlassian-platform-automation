@@ -1,0 +1,25 @@
+{
+  "_comment": "Draft rule set for the treatment project, in the shape of a Jira Automation export. Placeholders in {{ }} are filled from contracts/<env>.json before import. Refine against a real export in the lab; the attestation `automation_rules` carries this file's sha256.",
+  "rules": [
+    {
+      "name": "Onboard: create the instance from the template",
+      "trigger": { "component": "TRIGGER", "type": "jira.issue.event.trigger:transitioned", "value": { "to": "Approved" } },
+      "conditions": [{ "component": "CONDITION", "type": "jira.issue.condition", "value": { "requestType": "Onboard an asset" } }],
+      "actions": [
+        { "component": "ACTION", "type": "jira.webrequest", "value": { "method": "POST", "url": "{{site_url}}/rest/api/3/project",
+          "body": { "key": "{{issue.Instance key}}", "name": "{{issue.summary}}", "projectTypeKey": "software", "leadAccountId": "{{issue.reporter.accountId}}", "permissionScheme": "{{contract.standards[issue.Platform standard].scheme_id}}" } } },
+        { "component": "ACTION", "type": "jira.webrequest", "value": { "method": "PUT", "url": "{{site_url}}/rest/api/3/project/{{issue.Instance key}}/properties/platform.standard", "body": "{{issue.Platform standard}}" } },
+        { "component": "ACTION", "type": "jira.webrequest", "value": { "method": "POST", "url": "{{site_url}}/rest/api/3/project/{{issue.Instance key}}/role/{{contract.standards[issue.Platform standard].roles.admin}}", "body": { "group": ["{{issue.Admin group}}"] } } },
+        { "component": "ACTION", "type": "jira.issue.transition", "value": { "to": "Active" } }
+      ]
+    },
+    {
+      "name": "Change: rebind a role",
+      "trigger": { "component": "TRIGGER", "type": "jira.issue.event.trigger:transitioned", "value": { "to": "Approved" } },
+      "conditions": [{ "component": "CONDITION", "type": "jira.issue.condition", "value": { "requestType": "Change an asset" } }],
+      "actions": [
+        { "component": "ACTION", "type": "jira.webrequest", "value": { "method": "POST", "url": "{{site_url}}/rest/api/3/project/{{issue.Instance key}}/role/{{contract.standards[issue.Platform standard].roles[issue.Role]}}", "body": { "group": ["{{issue.Group}}"] } } }
+      ]
+    }
+  ]
+}

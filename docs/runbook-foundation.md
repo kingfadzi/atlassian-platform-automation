@@ -35,6 +35,22 @@ no public read or write API for other users. In the real lab, confirm the Jira g
 with `GET /rest/api/3/permissions` and, if a key exists, replace the attestation with a
 `mypermissions` probe as a non-admin identity (one fact block in `facts.tf`, one catalogue edit).
 
+## Asset-treatment service (policy/treatment.yaml)
+
+The engine provisions the `ATS` service project, the `Asset` issue type (and adds it to the
+project's issue type scheme), the five Asset fields and the four request types. Three things
+remain console work:
+
+| Control | Where | What to do |
+|---|---|---|
+| (no control; portal layout) | ATS > Project settings > Request types | Put the Asset fields (Platform standard, Instance key, Owner authority, Classification, Review date) on each request form and on the Asset issue screens. |
+| `asset_workflow_built` | ATS > Project settings > Workflows | Build the Asset workflow exactly as `jsm/asset-workflow.yaml` declares and assign it to the Asset issue type. Record the attestation with `sha256: "$(sha256sum jsm/asset-workflow.yaml)"`. |
+| `automation_rules_imported` | ATS > Project settings > Automation > Import | Fill the `{{ }}` placeholders from `contracts/<env>.json`, import `jsm/automation-rules.json`, enable the rules. Record the attestation with the file's sha256. |
+
+A later change to either file fails its control until the console work is repeated and the new
+hash recorded; the spike proves this ("[imports]"). Readiness dimension `treatment` reports the
+service; nothing depends on it yet.
+
 ## Recovering a provisioned setting removed out of band
 
 The REST provider in use (Mastercard/restapi 3.0.0) does not drop an object from state when the

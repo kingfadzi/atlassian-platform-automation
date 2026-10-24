@@ -30,6 +30,14 @@ rungs the engine may perform in the environment; a failing control whose rung is
 reported with `performed: report` and the intended rung, so the policy can be written ahead of
 the executor and the output shows what would happen.
 
+## Asset records
+
+Every instance should have an `Asset` issue in the treatment service whose "Instance key" field
+is `jira:<KEY>` or `confluence:<KEY>`; `asset_record_present` reports the ones that do not (they
+were created outside the service). The record is where `flag` will land: a comment and a
+transition to Attention (`jsm/asset-workflow.yaml`). The treatment project itself is platform
+desired state and is excluded from the instance list.
+
 ## What conform never does
 
 Create a project or space; create or change a group; remove a group from a role (offboarding is a

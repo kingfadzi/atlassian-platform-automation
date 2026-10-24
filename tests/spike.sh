@@ -11,12 +11,17 @@ PORT=8089
 export TF_IN_AUTOMATION=1 TF_INPUT=0
 export TF_VAR_atlassian_org_api_key=stub TF_VAR_atlassian_email=admin@lab TF_VAR_atlassian_api_token=stub
 export TF_VAR_admin_api_url="http://127.0.0.1:$PORT/admin"
-VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "runtime_dir=$ROOT/tests/stub/runtime")
+# runtime fixture: the committed records plus import attestations carrying the current jsm/ file hashes
+rm -rf /tmp/spike-runtime && cp -r "$ROOT/tests/stub/runtime" /tmp/spike-runtime
+for f in asset_workflow:jsm/asset-workflow.yaml automation_rules:jsm/automation-rules.json; do
+  printf '  - { id: %s, kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB, sha256: "%s" }\n' "${f%%:*}" "$(sha256sum "$ROOT/${f#*:}" | cut -d' ' -f1)" >> /tmp/spike-runtime/attestations.yaml
+done
+VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "runtime_dir=/tmp/spike-runtime")
 STAGES=(bootstrap foundation conform)
 
 (cd "$ROOT/tests/stub" && exec python3 stub_tenant.py "$PORT" >/tmp/stub.log 2>&1) &
-rm -f /tmp/spike-foundation.yaml /tmp/spike-standard.yaml   # copies from an earlier run must never be restored
-STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/conform/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; [ -f /tmp/spike-standard.yaml ] && cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; true' EXIT
+rm -f /tmp/spike-foundation.yaml /tmp/spike-standard.yaml /tmp/spike-rules.json   # copies from an earlier run must never be restored
+STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/conform/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; [ -f /tmp/spike-standard.yaml ] && cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; [ -f /tmp/spike-rules.json ] && cp /tmp/spike-rules.json "$ROOT/jsm/automation-rules.json"; true' EXIT
 sleep 1.5
 
 plan_expect_clean() { # stage label
@@ -48,6 +53,13 @@ run_stage() { # stage: apply, then three clean re-plans
 run_stage bootstrap
 run_stage foundation
 echo "  contract: $(out foundation contract | python3 -c 'import json,sys; c=json.load(sys.stdin); s=c["standards"]["restricted-collab-v1"]; print("scheme", s["scheme_id"], "roles", s["roles"], "stamp", c["stamp"])')"
+echo "  treatment: $(out foundation contract | python3 -c 'import json,sys; t=json.load(sys.stdin)["treatment"]; print(t["project_key"], "asset type", t["issue_type_id"], "fields", sorted(t["field_ids"]), "request types", sorted(t["request_types"]))')"
+echo "  ready = $(out foundation ready | tr -d '\n ')"
+python3 - "$(out foundation ready)" <<'PY'
+import json, sys
+ready = json.loads(sys.argv[1])
+assert ready == {"jira": True, "confluence": True, "treatment": True}, f"all three dimensions must be ready: {ready}"
+PY
 
 echo "[jsm] the stub seeds instances the way requests would create them (one conforming, the rest defective)"
 out foundation contract > /tmp/spike-contract.json
@@ -57,12 +69,14 @@ out conform findings | python3 -c 'import json,sys; [print("  finding:", f) for 
 python3 - <<'PY' "$(out conform instances)" "$(out conform summary)"
 import json, sys
 inst, summary = json.loads(sys.argv[1]), json.loads(sys.argv[2])
+A = "asset_record_present"   # every instance that did not go through the service lacks its Asset record
 expect = {
-  "jira:LABOK": set(), "jira:LABUSR": {"roles_bound_to_groups_only"}, "jira:LABNST": {"stamped_with_standard"},
-  "jira:LABOLD": {"recently_active"}, "jira:LABNOA": {"admin_role_bound"}, "jira:LABEXT": {"groups_match_ad_pattern"},
-  "jira:LABFOR": {"stamped_with_standard", "on_standard_scheme", "no_public_access"},
-  "confluence:LABOK": set(), "confluence:LABPUB": {"no_public_access"}, "confluence:LABOLDS": {"stamped_with_standard", "recently_active"},
+  "jira:LABOK": set(), "jira:LABUSR": {"roles_bound_to_groups_only"}, "jira:LABNST": {"stamped_with_standard", A},
+  "jira:LABOLD": {"recently_active", A}, "jira:LABNOA": {"admin_role_bound", A}, "jira:LABEXT": {"groups_match_ad_pattern", A},
+  "jira:LABFOR": {"stamped_with_standard", "on_standard_scheme", "no_public_access", A},
+  "confluence:LABOK": set(), "confluence:LABPUB": {"no_public_access", A}, "confluence:LABOLDS": {"stamped_with_standard", "recently_active", A},
 }
+assert "jira:ATS" not in inst, "the treatment project is platform desired state, not an instance"
 for key, want in expect.items():
     got = set(inst[key]["actions"])
     assert got == want, f"{key}: expected {sorted(want)}, got {sorted(got)}"
@@ -154,6 +168,18 @@ echo "  standard inactive_days 90 -> 100000: LABOLD recently_active = $(out conf
 cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; rm -f /tmp/spike-standard.yaml
 apply_quiet conform
 echo "  restored: LABOLD recently_active = $(out conform instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
+
+echo "[imports] a changed jsm/ file must invalidate its attestation until re-imported and re-recorded"
+cp "$ROOT/jsm/automation-rules.json" /tmp/spike-rules.json
+python3 - "$ROOT/jsm/automation-rules.json" <<'PY'
+import json, sys
+p = sys.argv[1]; d = json.load(open(p)); d["rules"][0]["name"] += " (edited)"; json.dump(d, open(p, "w"), indent=2)
+PY
+apply_quiet foundation
+echo "  rules edited: ready.treatment = $(out foundation ready | python3 -c 'import json,sys; print(json.load(sys.stdin)["treatment"])') blocking = $(out foundation blocking | tr -d '\n ')"
+cp /tmp/spike-rules.json "$ROOT/jsm/automation-rules.json"; rm -f /tmp/spike-rules.json
+apply_quiet foundation
+echo "  restored: ready.treatment = $(out foundation ready | python3 -c 'import json,sys; print(json.load(sys.stdin)["treatment"])')"
 
 echo "[destroy] removing a provisioned role from policy must be refused"
 cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml

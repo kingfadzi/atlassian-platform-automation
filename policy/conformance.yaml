@@ -33,6 +33,13 @@ controls:
     require: { op: equals, value: true }
     action: flag
 
+  - id: asset_record_present
+    title: Instance has an Asset record in the treatment service (it was onboarded, and can be flagged)
+    depends: [jira, confluence]
+    fact: asset_record
+    require: { op: equals, value: true }
+    action: flag
+
   - id: standard_current
     title: Instance is on a standard that has not been superseded
     depends: [jira, confluence]

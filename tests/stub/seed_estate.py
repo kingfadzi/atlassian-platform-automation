@@ -28,3 +28,10 @@ for i in instances:
     body = json.dumps(i).encode()
     urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}/__stub/seed/instance", body, {"content-type": "application/json"}))
     print(f"seeded {i['kind']}:{i['key']}")
+
+# Asset records exist for what went through the service: the conforming pair and one flagged project.
+key_field = contract["treatment"]["field_ids"]["instance_key"]
+for ref in ["jira:LABOK", "confluence:LABOK", "jira:LABUSR"]:
+    body = json.dumps({"fields": {key_field: ref, "summary": ref}}).encode()
+    urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}/__stub/seed/asset", body, {"content-type": "application/json"}))
+    print(f"asset record {ref}")

@@ -23,4 +23,5 @@ policy_files:                         # hashed into every ledger entry so decisi
   - policy/intent_rules.yaml
   - policy/identities.yaml
   - policy/conformance.yaml
+  - policy/treatment.yaml
   - policy/standards                  # a directory: every standard file is hashed

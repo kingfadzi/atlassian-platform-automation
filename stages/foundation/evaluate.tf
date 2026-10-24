@@ -15,6 +15,7 @@ locals {
       "policy.space_role_names" = distinct(flatten([for s in local.standards : values(s.confluence.space_roles)]))
       "policy.admin_accounts"   = [for a in local.identities.accounts : a.id]
     },
+    local.treatment_intent, # treatment.tf
   )
 }
 
@@ -23,6 +24,7 @@ module "evaluation" {
   catalogue = local.catalogue
   facts     = local.facts
   intent    = local.intent
+  products  = ["jira", "confluence", "treatment"]
   now       = local.now
 }
 

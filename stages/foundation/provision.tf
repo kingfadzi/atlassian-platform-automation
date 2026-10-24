@@ -54,6 +54,7 @@ output "contract" {
     } }
     group_pattern = var.tenant.group_pattern
     stamp         = local.conformance.stamp
+    treatment     = local.treatment_contract # treatment.tf
   }
 }
 

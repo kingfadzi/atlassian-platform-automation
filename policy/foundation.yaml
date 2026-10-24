@@ -238,3 +238,53 @@ controls:
     depends: [jira, confluence]
     fact: exceptional_identities_last_review
     require: { op: within_days, value: 90 }
+
+  # Asset-treatment service (Asset Ownership and Treatment; policy/treatment.yaml). Readiness
+  # dimension `treatment`; nothing depends on it yet.
+  - id: treatment_project_present
+    title: The asset-treatment service project exists as a service desk
+    provision: engine
+    mandatory: true
+    depends: [treatment]
+    fact: service_project_keys
+    require: { op: superset_of, value_from: policy.treatment_project_keys }
+
+  - id: asset_issue_type_present
+    title: The Asset issue type exists
+    provision: engine
+    mandatory: true
+    depends: [treatment]
+    fact: issue_type_names
+    require: { op: superset_of, value_from: policy.asset_issue_type }
+
+  - id: asset_fields_present
+    title: Every Asset record field exists
+    provision: engine
+    mandatory: true
+    depends: [treatment]
+    fact: custom_field_names
+    require: { op: superset_of, value_from: policy.asset_field_names }
+
+  - id: request_types_present
+    title: Onboard, change, review and retire request types exist in the service
+    provision: engine
+    mandatory: true
+    depends: [treatment]
+    fact: treatment_request_types
+    require: { op: superset_of, value_from: policy.request_type_names }
+
+  - id: asset_workflow_built
+    title: Asset workflow built as declared in jsm/asset-workflow.yaml (attested by file hash)
+    provision: runbook
+    mandatory: true
+    depends: [treatment]
+    fact: import_current_asset_workflow
+    require: { op: equals, value: true }
+
+  - id: automation_rules_imported
+    title: Automation rules imported as declared in jsm/automation-rules.json (attested by file hash)
+    provision: runbook
+    mandatory: true
+    depends: [treatment]
+    fact: import_current_automation_rules
+    require: { op: equals, value: true }

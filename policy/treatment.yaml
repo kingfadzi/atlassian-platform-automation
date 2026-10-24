@@ -1,0 +1,38 @@
+# The asset-treatment service: the JSM project users onboard, change, review and retire assets
+# through. Platform desired state, provisioned by the foundation (stages/foundation/treatment.tf);
+# instances are what this service creates, never this file. Workflow and automation have no
+# public write API: they are declared in jsm/ and imported once by hand, attested by file hash.
+version: 2026-10
+owner: PLATFORM-GOV
+
+project:
+  key: ATS
+  name: Asset Treatment Service
+  type: service_desk
+  template: com.atlassian.servicedesk:simplified-general-service-desk-it   # confirm against GET /rest/api/3/project/type in the lab
+  lead: engine                        # kind in policy/identities.yaml whose account leads the project
+  description: "Self-service onboarding, change, review and retirement of Jira projects and Confluence spaces | managed by platform automation"
+
+asset:                                # one record per instance; conform links instances to it
+  issue_type: Asset
+  description: An instance (Jira project or Confluence space) under treatment
+  fields:                             # custom fields created site-wide and placed on the Asset screens (runbook)
+    - { id: standard,        name: Platform standard, type: textfield }
+    - { id: instance_key,    name: Instance key,      type: textfield }   # "jira:KEY" or "confluence:KEY"
+    - { id: owner_authority, name: Owner authority,   type: textfield }
+    - { id: classification,  name: Classification,    type: textfield }
+    - { id: review_date,     name: Review date,       type: datepicker }
+
+request_types:                        # portal entries; each creates an Asset issue
+  - { id: onboard, name: Onboard an asset,  description: "Request a new Jira project or Confluence space on a platform standard" }
+  - { id: change,  name: Change an asset,   description: "Change the groups bound to an asset's roles" }
+  - { id: review,  name: Review an asset,   description: "Confirm an asset is still needed and correctly owned" }
+  - { id: retire,  name: Retire an asset,   description: "Archive an asset that is no longer needed" }
+
+imports:                              # declared here, built or imported by hand, attested with the file's sha256
+  - { id: asset_workflow,   file: jsm/asset-workflow.yaml,    how: "Build the Asset workflow in the console as the file describes" }
+  - { id: automation_rules, file: jsm/automation-rules.json,  how: "Project settings > Automation > Import rules" }
+
+field_types:                          # Jira custom field type and searcher keys per short type name
+  textfield:  { type: com.atlassian.jira.plugin.system.customfieldtypes:textfield,  searcher: com.atlassian.jira.plugin.system.customfieldtypes:textsearcher }
+  datepicker: { type: com.atlassian.jira.plugin.system.customfieldtypes:datepicker, searcher: com.atlassian.jira.plugin.system.customfieldtypes:daterange }

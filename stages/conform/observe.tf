@@ -17,7 +17,8 @@ data "http" "projects" {
 }
 
 locals {
-  projects     = { for p in try(jsondecode(data.http.projects.response_body).values, []) : p.key => p }
+  # Platform-owned projects (the treatment service) are desired state, not instances.
+  projects     = { for p in try(jsondecode(data.http.projects.response_body).values, []) : p.key => p if p.key != try(local.treatment.project_key, "") }
   project_role = { for pair in setproduct(keys(local.projects), keys(local.role_ids)) : "${pair[0]}:${pair[1]}" => { key = pair[0], role = pair[1] } }
 }
 
@@ -68,5 +69,18 @@ data "http" "space_latest_page" {
 
 data "http" "site_space_roles" {
   url             = "${var.tenant.site_url}/wiki/api/v2/space-roles"
+  request_headers = local.site_auth
+}
+
+# Asset records in the treatment service, matched to instances by the "Instance key" field.
+locals {
+  treatment    = try(local.contract.treatment, null)
+  asset_jql    = local.treatment == null ? "" : urlencode("project = ${local.treatment.project_key} AND issuetype = Asset")
+  asset_fields = local.treatment == null ? "" : local.treatment.field_ids["instance_key"]
+}
+
+data "http" "asset_records" {
+  count           = local.treatment == null ? 0 : 1
+  url             = "${var.tenant.site_url}/rest/api/3/search/jql?jql=${local.asset_jql}&fields=${local.asset_fields}&maxResults=100"
   request_headers = local.site_auth
 }
