@@ -32,8 +32,9 @@ locals {
     banner    = data.http.announcement_banner, project_roles = data.http.project_roles, space_roles = data.http.space_roles,
     license   = data.http.jira_license, workspaces = data.http.workspaces,
   }
-  site_host            = replace(var.tenant.site_url, "/^https?:\\/\\//", "")
-  confluence_workspace = try(one([for w in local.json.workspaces.data : w if w.attributes.typeKey == "confluence" && endswith(w.attributes.hostUrl, local.site_host)]), null)
+  # Matched on the site URL prefix: the Confluence hostUrl is "<site>/wiki", so an endswith test
+  # on the bare host leaves this null and the seat-capacity fact silently unknown.
+  confluence_workspace = try(one([for w in local.json.workspaces.data : w if w.attributes.typeKey == "confluence" && startswith(try(w.attributes.hostUrl, ""), var.tenant.site_url)]), null)
   role_name_by_id      = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
   admin_member_status  = { for g, d in data.http.admin_group_members : g => d.status_code }
   admin_members        = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
@@ -120,9 +121,11 @@ locals {
       known = local.status.license == 200
       value = length([for a in try(local.json.license.applications, []) : a if a.plan == "PAID"])
     }
+    # Seat capacity is on the entitlement, not the workspace: the workspace attributes carry no
+    # capacity field at all, so reading it there leaves this fact permanently unknown.
     confluence_seat_capacity = {
-      known = local.status.workspaces == 200 && can(local.confluence_workspace.attributes.capacity)
-      value = try(local.confluence_workspace.attributes.capacity, null)
+      known = local.status.workspaces == 200 && can(local.confluence_workspace.relationships.entitlement[0].attributes.softCapacityLimit)
+      value = try(local.confluence_workspace.relationships.entitlement[0].attributes.softCapacityLimit, null)
     }
     exceptional_identities_last_review = {
       known = true
