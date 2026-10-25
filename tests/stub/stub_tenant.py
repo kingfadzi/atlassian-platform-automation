@@ -26,9 +26,21 @@ def directories(org):
 
 @app.post("/admin/v2/orgs/<org>/workspaces")
 def workspaces(org):
+    """Product inventory, shaped like the real payload: seat capacity sits on the entitlement
+    rather than the workspace, a product hostUrl carries its own path ("/wiki" for Confluence),
+    and some workspaces report no hostUrl at all."""
     host = request.host_url.rstrip("/")
-    return jsonify({"data": [{"id": "ws-1", "attributes": {"typeKey": "jira-software", "hostUrl": host, "capacity": 10}},
-                             {"id": "ws-2", "attributes": {"typeKey": "confluence", "hostUrl": host, "capacity": 10}}], "links": {}})
+
+    def ws(wid, type_key, path=None, seats=10):
+        attributes = {"typeKey": type_key}
+        if path is not None:                      # studio and rovo carry no hostUrl
+            attributes["hostUrl"] = host + path
+        return {"id": wid, "attributes": attributes,
+                "relationships": {"entitlement": [{"attributes": {"softCapacityLimit": seats}}]}}
+
+    return jsonify({"data": [ws("ws-1", "jira-software", ""),
+                             ws("ws-2", "confluence", "/wiki"),
+                             ws("ws-3", "studio")], "links": {}})
 
 
 @app.get("/rest/api/3/instance/license")

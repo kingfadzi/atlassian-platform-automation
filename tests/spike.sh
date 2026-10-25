@@ -24,6 +24,9 @@ rm -f /tmp/spike-foundation.yaml /tmp/spike-standard.yaml /tmp/spike-rules.json 
 STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/conform/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; [ -f /tmp/spike-standard.yaml ] && cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; [ -f /tmp/spike-rules.json ] && cp /tmp/spike-rules.json "$ROOT/jsm/automation-rules.json"; true' EXIT
 sleep 1.5
 
+# BSD sed requires a suffix for -i and GNU accepts one, so edit in place and drop the backup.
+sedi() { sed -i.spike "$1" "$2" && rm -f "$2.spike"; }
+
 plan_expect_clean() { # stage label
   "$TF" -chdir="$ROOT/stages/$1" plan -detailed-exitcode -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 && rc=0 || rc=$?
   [ $rc -eq 0 ] && echo "  plan ($2): no changes" || { echo "  plan ($2): exit $rc"; grep -E "Plan:|Warning|Error" /tmp/spike-plan.out | head -5; return 1; }
@@ -164,13 +167,13 @@ fi
 
 echo "[policy] a requirement changed in YAML alone must change a verdict (no HCL touched)"
 cp "$ROOT/policy/foundation.yaml" /tmp/spike-foundation.yaml
-sed -i 's/require: { op: within_days, value: 7 }/require: { op: within_days, value: 0 }/' "$ROOT/policy/foundation.yaml"
+sedi 's/require: { op: within_days, value: 7 }/require: { op: within_days, value: 0 }/' "$ROOT/policy/foundation.yaml"
 apply_quiet foundation
 echo "  foundation audit window 7 -> 0 days: ready = $(out foundation ready | tr -d '\n ')"
 cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; rm -f /tmp/spike-foundation.yaml
 apply_quiet foundation
 cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml
-sed -i 's/inactive_days: 90 /inactive_days: 100000 /' "$ROOT/policy/standards/restricted-collab-v1.yaml"
+sedi 's/inactive_days: 90 /inactive_days: 100000 /' "$ROOT/policy/standards/restricted-collab-v1.yaml"
 apply_quiet conform
 echo "  standard inactive_days 90 -> 100000: LABOLD recently_active = $(out conform instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
 cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; rm -f /tmp/spike-standard.yaml
@@ -191,7 +194,7 @@ echo "  restored: ready.treatment = $(out foundation ready | python3 -c 'import 
 
 echo "[destroy] removing a provisioned role from policy must be refused"
 cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml
-sed -i 's/^roles: \[admin, lead, member, viewer\]/roles: [admin, lead, member]/; /^    viewer: /d' "$ROOT/policy/standards/restricted-collab-v1.yaml"
+sedi 's/^roles: \[admin, lead, member, viewer\]/roles: [admin, lead, member]/; /^    viewer: /d' "$ROOT/policy/standards/restricted-collab-v1.yaml"
 if "$TF" -chdir="$ROOT/stages/foundation" plan -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1; then
   echo "  FAIL: plan accepted a removal"; exit 1
 else

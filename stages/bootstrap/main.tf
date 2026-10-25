@@ -32,8 +32,10 @@ data "http" "confluence_me" {
 locals {
   directory_ids = data.http.directories.status_code == 200 ? [for d in jsondecode(data.http.directories.response_body).data : d.directoryId] : []
   workspaces    = try(jsondecode(data.http.workspaces.response_body).data, []) # try(): a real response is a tuple of mixed objects, which a bare ?: cannot unify with []
-  site_host     = replace(var.tenant.site_url, "/^https?:\\/\\//", "")
-  product_keys  = [for w in local.workspaces : w.attributes.typeKey if endswith(w.attributes.hostUrl, local.site_host)]
+  # A workspace belongs to this site when its hostUrl starts with the site URL. Product hostUrls
+  # carry a path ("/wiki", "/compass", "/jira/assets"), so an endswith test on the bare host never
+  # matches Confluence; and some workspaces (studio) carry no hostUrl at all, hence try().
+  product_keys = [for w in local.workspaces : w.attributes.typeKey if startswith(try(w.attributes.hostUrl, ""), var.tenant.site_url)]
 }
 
 check "tenancy" {
