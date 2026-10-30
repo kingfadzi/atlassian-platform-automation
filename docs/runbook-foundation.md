@@ -39,12 +39,9 @@ must not let readiness pass. Fix the list; the engine never guesses a group.
 
 ## Runbook steps
 
-| Control | Where | What to do |
-|---|---|---|
-| `native_project_creation_closed` | Jira: Settings → System → Global permissions | Remove every group from "Create team-managed projects" so only Jira administrators (the engine's admin group) can create projects. Company-managed creation already requires Jira administration. |
-| `native_space_creation_closed` | Confluence: Settings → Global permissions | Grant "Create space" to the engine's group only; remove it from `confluence-users` and any other group. |
-| `exceptional_identities_reviewed` | `policy/identities.yaml` | Review each account's owner and scope; update `reviewed` for every account still justified; remove the rest (and their access, out of band). |
-| `anonymous_jira_closed`, `anonymous_confluence_closed`, `no_public_scheme_grants`, `public_links_off`, `self_signup_off`, `org_policies_enabled`, `confluence_audit_retention`, `announcement_banner`, `evidence_retrieval`, `alert_routing_tested`, `no_sitewide_browse_grants`, `product_access_by_group` | admin console | As before (see each control's title); most are read from the tenant and need no attestation. |
+Each console-owed control carries its own `where` and `todo` in `policy/foundation.yaml`, and
+`make <phase>` prints them for anything outstanding. There is no table here to fall out of step
+with the catalogue.
 
 The two native-creation controls are attested because Jira and Confluence global permissions have
 no public read or write API for other users. In the real lab, confirm the Jira global permission key

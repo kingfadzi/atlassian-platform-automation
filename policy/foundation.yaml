@@ -36,6 +36,8 @@ controls:
     register: [SSCF-EXP-01]
     effective_from: 2026-10-20
     provision: runbook
+    where: "Jira > Settings > Issues > Permission schemes, and System > General configuration"
+    todo: "Remove anonymous access: no scheme may grant Browse Projects to Anyone, and no project may be shared publicly."
     mandatory: true
     depends: [jira]
     fact: anonymous_jira_projects
@@ -47,6 +49,8 @@ controls:
     register: [SSCF-EXP-01]
     effective_from: 2026-10-20
     provision: runbook
+    where: "Confluence > Settings > Global permissions, and each space's permissions"
+    todo: "Remove the anonymous user from global and space permissions so no space is readable without signing in."
     mandatory: true
     depends: [confluence]
     fact: anonymous_confluence_spaces
@@ -58,6 +62,8 @@ controls:
     register: [SSCF-EXP-01, SSCF-ACC-03]
     effective_from: 2026-10-20
     provision: runbook
+    where: "Jira > Settings > Issues > Permission schemes"
+    todo: "Remove every grant whose holder is Anyone from every scheme; the engine's own schemes never carry one."
     mandatory: true
     depends: [jira]
     fact: scheme_grants_to_anyone
@@ -80,6 +86,8 @@ controls:
     register: [SSCF-EXP-02]
     effective_from: 2026-10-20
     provision: runbook
+    where: "Confluence > Settings > Further configuration, and admin.atlassian.com > Security"
+    todo: "Turn off public links and anonymous external sharing, then attest: this setting has no read API."
     mandatory: true
     depends: [confluence]
     fact: attestation
@@ -90,6 +98,8 @@ controls:
     phase: guardrails
     title: No scheme grants BROWSE_PROJECTS to every licensed user
     provision: runbook
+    where: "Jira > Settings > Issues > Permission schemes"
+    todo: "Remove grants of Browse Projects to an application role, which would give every licensed user access."
     mandatory: false
     depends: [jira]
     fact: scheme_browse_for_all_licensed
@@ -99,6 +109,8 @@ controls:
     phase: identity
     title: Default product access groups are the declared ones
     provision: runbook
+    where: "admin.atlassian.com > Product access"
+    todo: "Make the default access groups the ones declared in foundation.product_access_groups, and remove the rest."
     mandatory: false
     depends: [jira]
     fact: default_access_groups
@@ -144,6 +156,8 @@ controls:
     phase: guardrails
     title: Confluence audit retention meets the minimum
     provision: runbook
+    where: "Confluence > Settings > Audit log > retention"
+    todo: "Raise the retention period to at least the window the control requires."
     mandatory: false
     depends: [confluence]
     fact: confluence_audit_retention_days
@@ -153,6 +167,8 @@ controls:
     phase: guardrails
     title: Announcement banner declares the governed estate
     provision: runbook
+    where: "Jira > Settings > System > Announcement banner"
+    todo: "Enable the banner and include the text declared in foundation.banner_contains."
     mandatory: false
     depends: [jira]
     fact: announcement_banner_text
@@ -162,6 +178,8 @@ controls:
     phase: readiness
     title: Evidence retrieval from the ledger destination
     provision: runbook
+    where: "the evidence destination, once one is chosen"
+    todo: "Confirm a ledger entry can be retrieved by someone outside the platform team, then attest."
     mandatory: false
     depends: [jira, confluence]
     fact: attestation
@@ -172,6 +190,8 @@ controls:
     phase: identity
     title: Self-signup and approved-domain signup off
     provision: runbook
+    where: "admin.atlassian.com > Settings > User management"
+    todo: "Turn off self-signup and approved-domain signup so accounts arrive only through the identity provider, then attest."
     mandatory: false
     depends: [jira, confluence]
     fact: attestation
@@ -191,6 +211,8 @@ controls:
     phase: guardrails
     title: Alert routing to responders tested
     provision: runbook
+    where: "the alerting destination and its on-call route"
+    todo: "Send a test alert and confirm a responder receives it, then attest: there is no API for this."
     mandatory: false
     depends: [jira, confluence]
     fact: attestation
@@ -266,6 +288,8 @@ controls:
     title: Only the engine can create Jira projects (team-managed creation removed from all users)
     register: [SSCF-ACC-03]
     provision: runbook
+    where: "Jira > Settings > System > Global permissions"
+    todo: "Remove every group from Create team-managed projects so only Jira administrators can create projects, then attest: global permission holders have no read API."
     mandatory: true
     depends: [jira]
     fact: attestation
@@ -276,6 +300,8 @@ controls:
     title: Only the engine can create Confluence spaces (Create Space held by the engine group)
     register: [SSCF-ACC-03]
     provision: runbook
+    where: "Confluence > Settings > Global permissions"
+    todo: "Grant Create space to the engine's group only and remove it from confluence-users and any other group, then attest."
     mandatory: true
     depends: [confluence]
     fact: attestation
@@ -297,6 +323,8 @@ controls:
     title: Exceptional identities reviewed within the window
     register: [SSCF-ACC-01]
     provision: runbook
+    where: "policy/identities.yaml"
+    todo: "Review each account's owner and scope, update reviewed for those still justified, and remove the rest along with their access."
     mandatory: true
     depends: [jira, confluence]
     fact: exceptional_identities_last_review
@@ -344,6 +372,8 @@ controls:
     phase: intake
     title: Asset workflow built as declared in jsm/asset-workflow.yaml (attested by file hash)
     provision: runbook
+    where: "the treatment project > Project settings > Workflows"
+    todo: "Build the Asset workflow as jsm/asset-workflow.yaml describes, then record the file's sha256 as the import attestation."
     mandatory: true
     depends: [treatment]
     fact: import_current_asset_workflow
@@ -353,6 +383,8 @@ controls:
     phase: intake
     title: Automation rules imported as declared in jsm/automation-rules.json (attested by file hash)
     provision: runbook
+    where: "the treatment project > Project settings > Automation > Import rules"
+    todo: "Import jsm/automation-rules.json, then record the file's sha256 as the import attestation."
     mandatory: true
     depends: [treatment]
     fact: import_current_automation_rules
