@@ -31,8 +31,10 @@ def workspaces(org):
     and some workspaces report no hostUrl at all."""
     host = request.host_url.rstrip("/")
 
+    realm = "us" if "product_placement_permitted" in failing else "global"
+
     def ws(wid, type_key, path=None, seats=10):
-        attributes = {"typeKey": type_key}
+        attributes = {"typeKey": type_key, "realm": realm}
         if path is not None:                      # studio and rovo carry no hostUrl
             attributes["hostUrl"] = host + path
         return {"id": wid, "attributes": attributes,

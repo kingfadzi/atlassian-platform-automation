@@ -38,11 +38,6 @@ data "http" "domains" {
   request_headers = local.admin_auth
 }
 
-data "http" "policies" {
-  url             = "${var.admin_api_url}/v1/orgs/${var.tenant.org_id}/policies"
-  request_headers = local.admin_auth
-}
-
 data "http" "confluence_audit_retention" {
   url             = "${var.tenant.site_url}/wiki/rest/api/audit/retention"
   request_headers = local.site_auth
