@@ -3,6 +3,7 @@
   govern gate   --plan-json plan.json --stage admit --runtime runtime/lab [--authority authority.yaml]
   govern review --plan plan.bin --reviewer USER --admin USER --out review.json
   govern verify --plan plan.bin --review review.json
+  govern status [--outputs <phase>=<terraform output -json>]...
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from govern import currency, gate, provenance, review
+from govern import currency, gate, provenance, review, status
 
 ROOT = Path(__file__).resolve().parent.parent
 POLICY = ROOT / "policy" / "gate.yaml"
@@ -51,6 +52,21 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 0 if ok else 3
 
 
+def cmd_status(args: argparse.Namespace) -> int:
+    """The stand-up sequence and where the platform stands in it."""
+    outputs = {}
+    for pair in args.outputs or []:
+        name, _, path = pair.partition("=")
+        outputs[name] = json.loads(Path(path).read_text())
+    print(status.render(
+        status.load_phases(ROOT / "policy" / "phases.yaml"),
+        status.load_controls([ROOT / "policy" / "foundation.yaml", ROOT / "policy" / "conformance.yaml"]),
+        outputs,
+        args.phase,
+    ))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="govern")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -68,6 +84,11 @@ def main(argv: list[str] | None = None) -> int:
     v.add_argument("--plan", required=True)
     v.add_argument("--review", required=True)
     v.set_defaults(func=cmd_verify)
+    s = sub.add_parser("status")
+    s.add_argument("--phase", help="narrow the view to one phase")
+    s.add_argument("--outputs", action="append", metavar="PHASE=FILE",
+                   help="a stage's `terraform output -json`; omit for a checklist from policy alone")
+    s.set_defaults(func=cmd_status)
     args = parser.parse_args(argv)
     try:
         return args.func(args)
