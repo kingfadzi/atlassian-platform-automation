@@ -97,10 +97,14 @@ controls:
     fact: default_access_groups
     require: { op: subset_of, value_from: foundation.product_access_groups }
 
+  # Mandatory: Guard manages only accounts whose address sits in a verified domain, so a declared
+  # domain that is not verified leaves those accounts unmanaged. An empty declaration requires
+  # nothing, so this is inert until the tenant names its domains.
   - id: verified_domains_known
     title: Verified domains include those in the intent
     provision: external
-    mandatory: false
+    effective_from: 2026-10-30
+    mandatory: true
     depends: [jira, confluence]
     fact: verified_domains
     require: { op: superset_of, value_from: foundation.domains }

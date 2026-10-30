@@ -10,7 +10,7 @@ tenant = {
 }
 
 foundation = {
-  domains               = [] # fill once the lab organisation has a verified domain
-  product_access_groups = [] # empty = report default access groups without judging them
+  domains               = ["lab.example", "lab.test"] # every TLD accounts sign in with; each must be verified
+  product_access_groups = []                          # empty = report default access groups without judging them
   banner_contains       = "governed"
 }
