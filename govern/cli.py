@@ -31,7 +31,11 @@ def cmd_gate(args: argparse.Namespace) -> int:
               "policy": {"files": provenance.policy_digests(ROOT, rules.get("policy_files", [])),
                          "versions": provenance.plan_policy_versions(plan)}}
     print(json.dumps(report, indent=2))
-    Path(args.ledger).open("a").write(json.dumps(report) + "\n") if args.ledger else None
+    if args.ledger:
+        ledger = Path(args.ledger)
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        with ledger.open("a") as handle:
+            handle.write(json.dumps(report) + "\n")
     return 0 if verdict.ok else 3
 
 
