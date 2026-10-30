@@ -17,7 +17,7 @@ rm -rf /tmp/spike-records && cp -r "$ROOT/tests/stub/records" /tmp/spike-records
 for f in asset_workflow:jsm/asset-workflow.yaml automation_rules:jsm/automation-rules.json; do
   printf '  - { id: %s, kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB, sha256: "%s" }\n' "${f%%:*}" "$(sha256sum "$ROOT/${f#*:}" | cut -d' ' -f1)" >> /tmp/spike-records/attestations.yaml
 done
-VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "records_dir=/tmp/spike-records")
+VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "records_dir=/tmp/spike-records" -var "dns_resolvers=[\"http://127.0.0.1:$PORT/dns/resolve\"]")
 STAGES=(tenancy foundation estate)
 
 (cd "$ROOT/tests/stub" && exec python3 stub_tenant.py "$PORT" >/tmp/stub.log 2>&1) &
@@ -222,6 +222,30 @@ curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/verified_domains_known" >/
 "$TF" -chdir="$ROOT/stages/foundation" output -json blocking | grep -q verified_domains_known \
   && { echo "  FAIL: both TLDs verified but the control still blocks"; exit 1; }
 echo "  both verified: cleared"
+
+echo "[dns] a verification record removed from the zone is reported before Atlassian re-checks"
+for control in domain_verification_record_present domain_claimed_by_one_org; do
+  curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/$control" >/dev/null
+done
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+python3 - "$(out foundation findings)" "$(out foundation blocking)" "$(out foundation controls)" "$(out foundation details)" <<'PY'
+import json, sys
+findings, blocking, controls, details = (json.loads(a) for a in sys.argv[1:5])
+for c in ("domain_verification_record_present", "domain_claimed_by_one_org"):
+    assert findings.get(c) == "fail", f"{c} must be a reported fail, got {findings.get(c)}"
+    assert c not in blocking, f"{c} must not block; Atlassian's own claim is the mandatory control"
+assert controls["verified_domains_known"] == "pass", "Atlassian still reports the domain verified: that is the gap"
+assert details["domains_missing_record"] == ["lab.test"], f"the broken zone must be named: {details['domains_missing_record']}"
+print("  record gone from DNS while claim.status still says verified: reported, not blocking")
+PY
+for control in domain_verification_record_present domain_claimed_by_one_org; do
+  curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/$control" >/dev/null
+done
+apply_quiet foundation
+plan_expect_clean foundation "dns restored"
+out foundation findings | grep -q domain_ \
+  && { echo "  FAIL: restoring the record left a domain finding"; exit 1; }
+echo "  record restored: both domain controls clear"
 
 echo "[destroy] removing a provisioned role from policy must be refused"
 cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml

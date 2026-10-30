@@ -5,7 +5,7 @@ Any control can be forced to fail: POST /__stub/fail/<control_id>; DELETE to res
 
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 from state import caller, db, failing
 
@@ -43,9 +43,22 @@ def domains(org):
     """Every TLD an organisation has claimed. Guard manages only accounts whose address sits in
     one of these, so an estate spanning several TLDs has to verify each."""
     names = ["lab.example"] if "verified_domains_known" in failing else ["lab.example", "lab.test"]
+    orgs = 2 if "domain_claimed_by_one_org" in failing else 1
     return jsonify({"data": [{"id": f"d{i}", "type": "domains",
-                              "attributes": {"name": n, "claim": {"status": "verified"}}}
+                              "attributes": {"name": n, "claim": {"status": "verified"},
+                                             "verifiedOrgsQuantity": orgs}}
                              for i, n in enumerate(names, 1)]})
+
+
+@foundation.get("/dns/resolve")
+def dns_resolve():
+    """DNS-over-HTTPS JSON, the shape both public resolvers answer in. Status 0 is NOERROR.
+    Atlassian's claim above only moves once it re-checks DNS, so the engine reads the zone too."""
+    name = request.args.get("name", "")
+    gone = "domain_verification_record_present" in failing and name == "lab.test"
+    answers = [] if gone else [{"name": name, "type": 16,
+                                "data": '"atlassian-domain-verification=stubtoken"'}]
+    return jsonify({"Status": 0, "Answer": answers})
 
 
 @foundation.get("/admin/v1/orgs/<org>/policies")
