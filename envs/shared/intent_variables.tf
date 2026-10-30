@@ -36,10 +36,10 @@ variable "foundation" {
   default     = {}
 }
 
-variable "runtime_dir" {
+variable "records_dir" {
   type        = string
   description = "Directory holding attestations.yaml, authority.yaml and exceptions.yaml (outside Git in anything but the lab)."
-  default     = "../../runtime/lab"
+  default     = "../../records/lab"
 }
 
 # The environment this plan is for. Policy keys its per-environment requirements on this, so the

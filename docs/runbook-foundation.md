@@ -8,7 +8,7 @@ attestation. The attestation is a fact like any other and expires; the control t
 
 ## Recording an attestation
 
-Append to `runtime/<env>/attestations.yaml` (outside Git in anything but the lab):
+Append to `records/<env>/attestations.yaml` (outside Git in anything but the lab):
 
 ```yaml
 records:
@@ -18,8 +18,8 @@ records:
 `id` is the control id, `recorded` is RFC 3339 in UTC, `by` is an account from `policy/identities.yaml`.
 The window (`attested_within_days`) is in the catalogue; when it lapses the control fails and the
 products that depend on it are reported as not ready until the step is repeated and re-recorded.
-The lab's `runtime/lab/attestations.yaml` is the honest record for the real lab tenant; the stub
-spike uses its own fixture under `tests/stub/runtime` and never writes to it.
+The lab's `records/lab/attestations.yaml` is the honest record for the real lab tenant; the stub
+spike uses its own fixture under `tests/stub/records` and never writes to it.
 
 ## Before you attest: what the plan allows
 

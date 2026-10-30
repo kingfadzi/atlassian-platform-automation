@@ -65,7 +65,8 @@ def instance_scoped(controls: list[dict]) -> bool:
     return any("action" in c for c in controls)
 
 
-def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | None = None) -> str:
+def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | None = None,
+           records: str = "records/lab") -> str:
     """outputs maps a stage name to its terraform outputs; a phase with none has not run.
     `only` narrows the view to one phase."""
     if only:
