@@ -31,6 +31,7 @@ owner: PLATFORM-GOV
 controls:
   # Mandatory core for the lab
   - id: anonymous_jira_closed
+    phase: guardrails
     title: Anonymous Jira access closed
     register: [SSCF-EXP-01]
     effective_from: 2026-10-20
@@ -41,6 +42,7 @@ controls:
     require: { op: equals, value: 0 }
 
   - id: anonymous_confluence_closed
+    phase: guardrails
     title: Anonymous Confluence access closed
     register: [SSCF-EXP-01]
     effective_from: 2026-10-20
@@ -51,6 +53,7 @@ controls:
     require: { op: equals, value: 0 }
 
   - id: no_public_scheme_grants
+    phase: guardrails
     title: No permission scheme grants to anyone on the internet
     register: [SSCF-EXP-01, SSCF-ACC-03]
     effective_from: 2026-10-20
@@ -61,6 +64,7 @@ controls:
     require: { op: empty }
 
   - id: audit_collection_live
+    phase: guardrails
     title: Organisation audit collection live
     register: [SSCF-LOG-01]
     effective_from: 2026-10-20
@@ -71,6 +75,7 @@ controls:
     require: { op: within_days, value: 7 }
 
   - id: public_links_off
+    phase: guardrails
     title: Public links and external sharing off
     register: [SSCF-EXP-02]
     effective_from: 2026-10-20
@@ -82,6 +87,7 @@ controls:
 
   # Reported only in the lab
   - id: no_sitewide_browse_grants
+    phase: guardrails
     title: No scheme grants BROWSE_PROJECTS to every licensed user
     provision: runbook
     mandatory: false
@@ -90,6 +96,7 @@ controls:
     require: { op: empty }
 
   - id: product_access_by_group
+    phase: identity
     title: Default product access groups are the declared ones
     provision: runbook
     mandatory: false
@@ -101,6 +108,7 @@ controls:
   # domain that is not verified leaves those accounts unmanaged. An empty declaration requires
   # nothing, so this is inert until the tenant names its domains.
   - id: verified_domains_known
+    phase: identity
     title: Verified domains include those in the intent
     provision: external
     effective_from: 2026-10-30
@@ -113,6 +121,7 @@ controls:
   # the environment declared; the second catches an environment using a realm it is not permitted.
   # Only the first reads intent, so editing intent cannot satisfy the second.
   - id: product_placement_matches_intent
+    phase: tenancy
     title: Product residency realms match the declared tenant
     provision: external
     effective_from: 2026-10-30
@@ -122,6 +131,7 @@ controls:
     require: { op: subset_of, value_from: foundation.approved_realms }
 
   - id: product_placement_permitted
+    phase: tenancy
     title: Product residency realms are permitted for this environment
     provision: external
     effective_from: 2026-10-30
@@ -131,6 +141,7 @@ controls:
     require: { op: subset_of, value_from: policy.permitted_realms }
 
   - id: confluence_audit_retention
+    phase: guardrails
     title: Confluence audit retention meets the minimum
     provision: runbook
     mandatory: false
@@ -139,6 +150,7 @@ controls:
     require: { op: at_least, value: 365 }
 
   - id: announcement_banner
+    phase: guardrails
     title: Announcement banner declares the governed estate
     provision: runbook
     mandatory: false
@@ -147,6 +159,7 @@ controls:
     require: { op: contains, value_from: foundation.banner_contains }
 
   - id: evidence_retrieval
+    phase: readiness
     title: Evidence retrieval from the ledger destination
     provision: runbook
     mandatory: false
@@ -156,6 +169,7 @@ controls:
     lab: not_applicable      # no evidence destination chosen yet
 
   - id: self_signup_off
+    phase: identity
     title: Self-signup and approved-domain signup off
     provision: runbook
     mandatory: false
@@ -164,6 +178,7 @@ controls:
     require: { op: attested_within_days, value: 90 }
 
   - id: authentication_policy
+    phase: identity
     title: Authentication policy, SSO and SCIM
     provision: external
     mandatory: false
@@ -173,6 +188,7 @@ controls:
     lab: not_applicable      # Atlassian Guard, outside the lab plan
 
   - id: alert_routing_tested
+    phase: guardrails
     title: Alert routing to responders tested
     provision: runbook
     mandatory: false
@@ -186,6 +202,7 @@ controls:
   # failing entitlement control explains why a runbook step cannot be completed; never attest a
   # step the plan does not allow. Flip to mandatory for a firm tenant.
   - id: jira_plan_paid
+    phase: tenancy
     title: At least one Jira application is on a paid plan (Free cannot restrict global permissions)
     provision: external
     mandatory: false
@@ -194,6 +211,7 @@ controls:
     require: { op: at_least, value: 1 }
 
   - id: confluence_plan_above_free
+    phase: tenancy
     title: Confluence seat capacity above the Free tier (inferred from the admin API; Confluence has no plan API)
     provision: external
     mandatory: false
@@ -204,6 +222,7 @@ controls:
   # Provisioned foundation (Cloud Foundation B and F): the engine creates these from policy and
   # then reads them back like any other fact.
   - id: roles_match_standards
+    phase: standards
     title: Site-wide Jira project roles exist for every role the standards declare
     register: [SSCF-ACC-03]
     provision: engine
@@ -213,6 +232,7 @@ controls:
     require: { op: superset_of, value_from: policy.role_names }
 
   - id: scheme_per_standard_present
+    phase: standards
     title: One permission scheme per standard, granting to roles
     register: [SSCF-ACC-03]
     provision: engine
@@ -222,6 +242,7 @@ controls:
     require: { op: superset_of, value_from: policy.scheme_names }
 
   - id: scheme_grants_match_standards
+    phase: standards
     title: Every grant a standard declares is present in its scheme (detects grants removed out of band)
     register: [SSCF-ACC-03]
     provision: engine
@@ -231,6 +252,7 @@ controls:
     require: { op: superset_of, value_from: policy.scheme_grants }
 
   - id: confluence_space_roles_present
+    phase: standards
     title: Confluence default space roles available on the site
     provision: external          # Atlassian feature rollout; nothing to configure
     mandatory: true
@@ -240,6 +262,7 @@ controls:
 
   # Native creation closed (Cloud Foundation C): console only, no public write API.
   - id: native_project_creation_closed
+    phase: guardrails
     title: Only the engine can create Jira projects (team-managed creation removed from all users)
     register: [SSCF-ACC-03]
     provision: runbook
@@ -249,6 +272,7 @@ controls:
     require: { op: attested_within_days, value: 90 }
 
   - id: native_space_creation_closed
+    phase: guardrails
     title: Only the engine can create Confluence spaces (Create Space held by the engine group)
     register: [SSCF-ACC-03]
     provision: runbook
@@ -259,6 +283,7 @@ controls:
 
   # Exceptional identities (Cloud Foundation B).
   - id: admins_are_listed
+    phase: identity
     title: Every account holding organisation or site administration is in policy/identities.yaml
     register: [SSCF-ACC-01]
     provision: external          # memberships come from the directory
@@ -268,6 +293,7 @@ controls:
     require: { op: subset_of, value_from: policy.admin_accounts }
 
   - id: exceptional_identities_reviewed
+    phase: identity
     title: Exceptional identities reviewed within the window
     register: [SSCF-ACC-01]
     provision: runbook
@@ -279,6 +305,7 @@ controls:
   # Asset-treatment service (Asset Ownership and Treatment; policy/treatment.yaml). Readiness
   # dimension `treatment`; nothing depends on it yet.
   - id: treatment_project_present
+    phase: intake
     title: The asset-treatment service project exists as a service desk
     provision: engine
     mandatory: true
@@ -287,6 +314,7 @@ controls:
     require: { op: superset_of, value_from: policy.treatment_project_keys }
 
   - id: asset_issue_type_present
+    phase: intake
     title: The Asset issue type exists
     provision: engine
     mandatory: true
@@ -295,6 +323,7 @@ controls:
     require: { op: superset_of, value_from: policy.asset_issue_type }
 
   - id: asset_fields_present
+    phase: intake
     title: Every Asset record field exists
     provision: engine
     mandatory: true
@@ -303,6 +332,7 @@ controls:
     require: { op: superset_of, value_from: policy.asset_field_names }
 
   - id: request_types_present
+    phase: intake
     title: Onboard, change, review and retire request types exist in the service
     provision: engine
     mandatory: true
@@ -311,6 +341,7 @@ controls:
     require: { op: superset_of, value_from: policy.request_type_names }
 
   - id: asset_workflow_built
+    phase: intake
     title: Asset workflow built as declared in jsm/asset-workflow.yaml (attested by file hash)
     provision: runbook
     mandatory: true
@@ -319,6 +350,7 @@ controls:
     require: { op: equals, value: true }
 
   - id: automation_rules_imported
+    phase: intake
     title: Automation rules imported as declared in jsm/automation-rules.json (attested by file hash)
     provision: runbook
     mandatory: true
