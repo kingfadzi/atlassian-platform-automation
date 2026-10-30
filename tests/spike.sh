@@ -12,12 +12,12 @@ export TF_IN_AUTOMATION=1 TF_INPUT=0
 export TF_VAR_atlassian_org_api_key=stub TF_VAR_atlassian_email=admin@lab TF_VAR_atlassian_api_token=stub
 export TF_VAR_admin_api_url="http://127.0.0.1:$PORT/admin"
 export TF_VAR_env=lab
-# runtime fixture: the committed records plus import attestations carrying the current jsm/ file hashes
-rm -rf /tmp/spike-runtime && cp -r "$ROOT/tests/stub/runtime" /tmp/spike-runtime
+# records fixture: the committed records plus import attestations carrying the current jsm/ file hashes
+rm -rf /tmp/spike-records && cp -r "$ROOT/tests/stub/records" /tmp/spike-records
 for f in asset_workflow:jsm/asset-workflow.yaml automation_rules:jsm/automation-rules.json; do
-  printf '  - { id: %s, kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB, sha256: "%s" }\n' "${f%%:*}" "$(sha256sum "$ROOT/${f#*:}" | cut -d' ' -f1)" >> /tmp/spike-runtime/attestations.yaml
+  printf '  - { id: %s, kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB, sha256: "%s" }\n' "${f%%:*}" "$(sha256sum "$ROOT/${f#*:}" | cut -d' ' -f1)" >> /tmp/spike-records/attestations.yaml
 done
-VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "runtime_dir=/tmp/spike-runtime")
+VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "records_dir=/tmp/spike-records")
 STAGES=(tenancy foundation estate)
 
 (cd "$ROOT/tests/stub" && exec python3 stub_tenant.py "$PORT" >/tmp/stub.log 2>&1) &

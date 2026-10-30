@@ -1,4 +1,4 @@
-"""Currency of attestations, authority and exceptions, read from the runtime directory."""
+"""Currency of attestations, authority and exceptions, read from the records directory."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from pathlib import Path
 import yaml
 
 
-def load_runtime(runtime_dir: Path) -> dict:
-    """Load every YAML file in the runtime directory keyed by stem (attestations, authority, ...)."""
-    return {p.stem: yaml.safe_load(p.read_text()) or {} for p in sorted(runtime_dir.glob("*.yaml"))}
+def load_records(records_dir: Path) -> dict:
+    """Load every YAML file in the records directory keyed by stem (attestations, authority, ...)."""
+    return {p.stem: yaml.safe_load(p.read_text()) or {} for p in sorted(records_dir.glob("*.yaml"))}
 
 
 def expired(records: list[dict], days: int, today: date) -> list[str]:
@@ -25,12 +25,12 @@ def expired(records: list[dict], days: int, today: date) -> list[str]:
     return stale
 
 
-def currency_findings(runtime: dict, windows: dict, today: date | None = None) -> list[str]:
+def currency_findings(records: dict, windows: dict, today: date | None = None) -> list[str]:
     """Blocking findings for stale attestations, authority or exceptions."""
     today = today or date.today()
     findings = []
     for kind in ("attestation", "authority", "exception"):
-        records = runtime.get(kind + "s", {}).get("records", [])
-        for name in expired(records, windows[kind], today):
+        entries = records.get(kind + "s", {}).get("records", [])
+        for name in expired(entries, windows[kind], today):
             findings.append(f"{kind} {name} is older than {windows[kind]} days or undated")
     return findings

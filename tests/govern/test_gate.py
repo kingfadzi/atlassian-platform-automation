@@ -40,9 +40,9 @@ def test_vanished_object_blocks_recreate():
 
 
 def test_currency_windows():
-    runtime = {"attestations": {"records": [{"id": "custody", "kind": "attestation", "recorded": date(2026, 1, 1)}]}}
-    assert currency.currency_findings(runtime, RULES["windows_days"], today=date(2026, 10, 23))
-    assert not currency.currency_findings(runtime, RULES["windows_days"], today=date(2026, 1, 20))
+    records = {"attestations": {"records": [{"id": "custody", "kind": "attestation", "recorded": date(2026, 1, 1)}]}}
+    assert currency.currency_findings(records, RULES["windows_days"], today=date(2026, 10, 23))
+    assert not currency.currency_findings(records, RULES["windows_days"], today=date(2026, 1, 20))
 
 
 def test_foundation_fixture_blocks_mandatory_and_reports_findings():
@@ -72,7 +72,7 @@ def test_gate_creates_the_ledger_directory(tmp_path):
     ledger = tmp_path / "ledger" / "lab.jsonl"
     rc = cli.main(["gate", "--plan-json",
                    str(ROOT / "tests" / "govern" / "fixtures" / "plan_foundation_blocked.json"),
-                   "--stage", "foundation", "--runtime", str(ROOT / "runtime" / "lab"),
+                   "--stage", "foundation", "--records", str(ROOT / "records" / "lab"),
                    "--ledger", str(ledger)])
     assert rc == 3                                  # the fixture blocks; the write must still happen
     assert json.loads(ledger.read_text().splitlines()[-1])["stage"] == "foundation"

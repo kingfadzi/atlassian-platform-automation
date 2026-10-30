@@ -16,7 +16,7 @@ gate, no destroy job. The repo holds no instance: no project, space, group or pe
 | Change the asset-treatment service: request types, Asset fields, project | `policy/treatment.yaml`; workflow and automation in `jsm/` (imported by hand, attested by hash) |
 | Change who may hold admin, engine or emergency access | `policy/identities.yaml` |
 | Change what the gate blocks or reports | `policy/gate.yaml` |
-| Do a console-only foundation step and record it | `docs/runbook-foundation.md`, then `runtime/<env>/attestations.yaml` |
+| Do a console-only foundation step and record it | `docs/runbook-foundation.md`, then `records/<env>/attestations.yaml` |
 | Point at a tenant | `envs/<env>/<env>.tfvars`: organisation, directory, site URL, AD group pattern |
 | Read a new property of the tenant or of an instance | one fact block in `stages/foundation/facts.tf` or `stages/estate/facts.tf` (plus its `data "http"`) |
 | Add a provisioned resource kind | a new folder under `modules/` with one `restapi_object` and a `check`, wired in `stages/foundation/provision.tf` |
@@ -65,7 +65,7 @@ policy/intent_rules.yaml       naming rules for what the engine provisions
 policy/gate.yaml               gate rules, currency windows, policy files hashed into the ledger
 govern/                        gate, currency, review, provenance, cli
 docs/                          policy-as-data.md, runbook-foundation.md, conformance.md
-runtime/<env>/                 attestations, authority, exceptions (outside Git in anything but the lab)
+records/<env>/                 attestations, authority, exceptions (outside Git in anything but the lab)
 contracts/<env>.json           written by the pipeline after the foundation apply; what JSM reads to create instances
 tests/intent                   terraform test for the input rules (no tenant needed)
 tests/govern                   gate unit tests on recorded plan JSON
@@ -118,7 +118,7 @@ What you need from the tenant, once:
 - Organisation id and an organisation API key: admin.atlassian.com > Settings > API keys (the org id is in the URL).
 - Directory id: run the tenancy stage; its `directory_ids` output lists them.
 - An API token for the engine identity (id.atlassian.com > Security > API tokens).
-- The console-only steps in `docs/runbook-foundation.md`, recorded in `runtime/lab/attestations.yaml`.
+- The console-only steps in `docs/runbook-foundation.md`, recorded in `records/lab/attestations.yaml`.
 
 Set `tenant` in `envs/lab/lab.tfvars` from the tenancy output, export the credentials as
 `TF_VAR_*`, then run the pipeline. Locally: `terraform -chdir=stages/tenancy plan -var-file=../../envs/lab/lab.tfvars`
