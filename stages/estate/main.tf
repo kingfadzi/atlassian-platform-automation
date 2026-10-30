@@ -1,4 +1,4 @@
-# Stage: conform, part 4. Outputs the estate's state and reports findings. Owns no instance;
+# Stage: estate, part 4. Outputs the estate's state and reports findings. Owns no instance;
 # the check is report-only so a non-conforming instance never blocks the run that found it.
 
 check "report_estate" {

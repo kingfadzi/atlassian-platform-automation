@@ -1,4 +1,4 @@
-# One pipeline, three Terraform stages (bootstrap, foundation, conform), one state each.
+# One pipeline, three Terraform stages (tenancy, foundation, estate), one state each.
 # Terraform plans; govern gates; a protected environment with deployment approvals holds the
 # apply. There is no destroy job. Instances are created by JSM, never here.
 #
@@ -31,7 +31,7 @@ stages: [validate, plan, gate, apply, operate]
     - export TF_HTTP_LOCK_METHOD=POST TF_HTTP_UNLOCK_METHOD=DELETE TF_HTTP_RETRY_WAIT_MIN=5
     - export TF_HTTP_USERNAME=gitlab-ci-token TF_HTTP_PASSWORD="$CI_JOB_TOKEN"
     - export TF_VAR_env="$ENV"           # policy keys its per-environment requirements on this
-    # conform reads the foundation stage's template ids and evaluation date from its state
+    # estate reads the foundation stage's template ids and evaluation date from its state
     - export TF_VAR_foundation_state="{\"address\":\"$CI_API_V4_URL/projects/$CI_PROJECT_ID/terraform/state/$ENV-foundation\",\"username\":\"gitlab-ci-token\",\"password\":\"$CI_JOB_TOKEN\"}"
     - terraform -chdir=stages/$STAGE init
   resource_group: $ENV-$STAGE          # one run per stage at a time
@@ -40,7 +40,7 @@ validate:
   stage: validate
   script:
     - terraform fmt -check -recursive
-    - for s in bootstrap foundation conform; do terraform -chdir=stages/$s init -backend=false && terraform -chdir=stages/$s validate; done
+    - for s in tenancy foundation estate; do terraform -chdir=stages/$s init -backend=false && terraform -chdir=stages/$s validate; done
     - terraform -chdir=tests/intent init && terraform -chdir=tests/intent test
     - terraform -chdir=modules/control_evaluation init && terraform -chdir=modules/control_evaluation test
     - apk add --no-cache python3 py3-yaml py3-pytest >/dev/null && python3 -m pytest -q tests/govern
@@ -80,11 +80,11 @@ validate:
     - terraform -chdir=stages/$STAGE apply plan.bin
     - terraform -chdir=stages/$STAGE apply -refresh-only -auto-approve -var-file=../../envs/$ENV/$ENV.tfvars   # persist the read-back shape
 
-# bootstrap and conform own no tenant resources; their apply only records outputs and checks.
-plan:bootstrap: { extends: .plan, variables: { STAGE: bootstrap } }
-gate:bootstrap: { extends: .gate, variables: { STAGE: bootstrap }, needs: [plan:bootstrap] }
+# tenancy and estate own no tenant resources; their apply only records outputs and checks.
+plan:tenancy: { extends: .plan, variables: { STAGE: tenancy } }
+gate:tenancy: { extends: .gate, variables: { STAGE: tenancy }, needs: [plan:tenancy] }
 
-plan:foundation: { extends: .plan, variables: { STAGE: foundation }, needs: [gate:bootstrap] }
+plan:foundation: { extends: .plan, variables: { STAGE: foundation }, needs: [gate:tenancy] }
 gate:foundation: { extends: .gate, variables: { STAGE: foundation }, needs: [plan:foundation] }
 apply:foundation:
   extends: .apply
@@ -96,9 +96,9 @@ apply:foundation:
     paths: [contracts/]
     expire_in: 90 days
 
-plan:conform: { extends: .plan, variables: { STAGE: conform }, needs: [apply:foundation] }
-gate:conform: { extends: .gate, variables: { STAGE: conform }, needs: [plan:conform] }
-apply:conform: { extends: .apply, variables: { STAGE: conform }, needs: [gate:conform] }   # records the estate's verdicts only
+plan:estate: { extends: .plan, variables: { STAGE: estate }, needs: [apply:foundation] }
+gate:estate: { extends: .gate, variables: { STAGE: estate }, needs: [plan:estate] }
+apply:estate: { extends: .apply, variables: { STAGE: estate }, needs: [gate:estate] }   # records the estate's verdicts only
 
 # Operate: scheduled reconciliation. Foundation drift and estate conformance; refresh-only plans
 # never carry actions, the gate reads checks and drift and writes the ledger.
@@ -107,7 +107,7 @@ drift:
   stage: operate
   rules: [{ if: $CI_PIPELINE_SOURCE == "schedule" }]
   parallel:
-    matrix: [{ STAGE: [foundation, conform] }]
+    matrix: [{ STAGE: [foundation, estate] }]
   script:
     - terraform -chdir=stages/$STAGE plan -refresh-only -out=plan.bin -var-file=../../envs/$ENV/$ENV.tfvars
     - terraform -chdir=stages/$STAGE show -json plan.bin > stages/$STAGE/plan.json

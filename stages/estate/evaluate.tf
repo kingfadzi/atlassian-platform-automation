@@ -1,4 +1,4 @@
-# Stage: conform, part 3. Every instance is judged by the same generic evaluation the foundation
+# Stage: estate, part 3. Every instance is judged by the same generic evaluation the foundation
 # uses, against the controls of its kind and the values of its standard. The result per instance
 # is a verdict per control and the rung policy assigns to each failure.
 

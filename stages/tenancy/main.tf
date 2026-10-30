@@ -1,4 +1,4 @@
-# Stage: bootstrap. Observe only. Confirms the tenancy, products and automation identity
+# Stage: tenancy. Observe only. Confirms the tenancy, products and automation identity
 # the intent assumes before anything is created. Owns no resources; its state holds only
 # the observations, which the governance gate reads as `checks` in the plan JSON.
 

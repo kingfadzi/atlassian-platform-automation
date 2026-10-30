@@ -1,4 +1,4 @@
-# Stage: conform reads the foundation stage's state for the template ids (roles, schemes) and
+# Stage: estate reads the foundation stage's state for the template ids (roles, schemes) and
 # refuses to judge the estate against a stale foundation evaluation. In the pipeline the state is
 # the GitLab http backend (TF_VAR_foundation_state); the spike overrides this with a local path.
 

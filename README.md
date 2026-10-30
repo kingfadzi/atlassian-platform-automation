@@ -18,7 +18,7 @@ gate, no destroy job. The repo holds no instance: no project, space, group or pe
 | Change what the gate blocks or reports | `policy/gate.yaml` |
 | Do a console-only foundation step and record it | `docs/runbook-foundation.md`, then `runtime/<env>/attestations.yaml` |
 | Point at a tenant | `envs/<env>/<env>.tfvars`: organisation, directory, site URL, AD group pattern |
-| Read a new property of the tenant or of an instance | one fact block in `stages/foundation/facts.tf` or `stages/conform/facts.tf` (plus its `data "http"`) |
+| Read a new property of the tenant or of an instance | one fact block in `stages/foundation/facts.tf` or `stages/estate/facts.tf` (plus its `data "http"`) |
 | Add a provisioned resource kind | a new folder under `modules/` with one `restapi_object` and a `check`, wired in `stages/foundation/provision.tf` |
 
 ## Boundaries
@@ -50,9 +50,9 @@ Identity boundary.
 ```
 envs/lab/lab.tfvars            tenant coordinates (operator surface, no secrets, no instances)
 envs/shared/*.tf               input shape and validations (rules read from policy/), providers, credentials, backend; symlinked into stages
-stages/bootstrap               observe tenancy, products and the engine identity
+stages/tenancy               observe tenancy, products and the engine identity
 stages/foundation              provision.tf (roles, scheme per standard, contract), treatment.tf (JSM service) -> observe.tf -> facts.tf -> evaluate.tf -> readiness
-stages/conform                 observe every project and space -> facts.tf -> evaluate.tf (per instance) -> findings and planned actions
+stages/estate                 observe every project and space -> facts.tf -> evaluate.tf (per instance) -> findings and planned actions
 modules/                       jira_project_role, jira_permission_scheme, jira_project, jira_issue_type, jira_issue_type_in_scheme, jira_custom_field,
                                jsm_request_type, control_evaluation (generic fact-versus-requirement, own tests)
 policy/foundation.yaml         shared foundation catalogue: per control a fact, a requirement and who provisions it
@@ -74,8 +74,8 @@ tests/stub, tests/spike.sh     stateful stub of the tenant (and of JSM, via seed
 
 ## Lifecycle
 
-bootstrap (observe tenancy) → foundation (provision templates and the asset-treatment service, then
-probe, observe, attest; publish `ready = { jira, confluence, treatment }` and `contract`) → conform (discover instances, classify by stamp or scheme, evaluate, act by
+tenancy (observe tenancy) → foundation (provision templates and the asset-treatment service, then
+probe, observe, attest; publish `ready = { jira, confluence, treatment }` and `contract`) → estate (discover instances, classify by stamp or scheme, evaluate, act by
 rule) → operate (scheduled: foundation drift and estate conformance, gate writes the ledger).
 
 Every foundation control says who makes it true: `engine` (provisioned here from policy), `runbook`
@@ -91,7 +91,7 @@ Instances are created through the asset-treatment service (`ATS`, a JSM project 
 provisions with an `Asset` issue type, its fields and onboard, change, review and retire request
 types): the request creates the project on the standard's
 scheme, binds each platform role to an AD group and stamps the standard id (`platform.standard`
-project property, `platform-standard-<id>` space label). `conform` finds every instance, judges it
+project property, `platform-standard-<id>` space label). `estate` finds every instance, judges it
 against `policy/conformance.yaml` and the values of its standard, and assigns the failing controls a
 rung: `report`, `flag`, `restrict` or `archive`. Delete is not a rung. Every instance is also
 linked to its `Asset` record in the service (`asset_record_present`), which is where `flag` will
@@ -105,7 +105,7 @@ the hashes of the policy files it was made under.
 
 ```
 make check                     fmt, validate, terraform test (input rules, evaluation operators), gate tests
-make spike                     bootstrap, foundation and conform against the stub: create, three clean re-plans, drift reported,
+make spike                     tenancy, foundation and estate against the stub: create, three clean re-plans, drift reported,
                                removed grant detected and recovered, ten seeded instances judged against their Asset records,
                                stale foundation refused, YAML-only changes flip readiness and a verdict, an edited jsm/ file
                                invalidates its attestation, removal from policy refused
@@ -116,12 +116,12 @@ make spike                     bootstrap, foundation and conform against the stu
 What you need from the tenant, once:
 
 - Organisation id and an organisation API key: admin.atlassian.com > Settings > API keys (the org id is in the URL).
-- Directory id: run the bootstrap stage; its `directory_ids` output lists them.
+- Directory id: run the tenancy stage; its `directory_ids` output lists them.
 - An API token for the engine identity (id.atlassian.com > Security > API tokens).
 - The console-only steps in `docs/runbook-foundation.md`, recorded in `runtime/lab/attestations.yaml`.
 
-Set `tenant` in `envs/lab/lab.tfvars` from the bootstrap output, export the credentials as
-`TF_VAR_*`, then run the pipeline. Locally: `terraform -chdir=stages/bootstrap plan -var-file=../../envs/lab/lab.tfvars`
+Set `tenant` in `envs/lab/lab.tfvars` from the tenancy output, export the credentials as
+`TF_VAR_*`, then run the pipeline. Locally: `terraform -chdir=stages/tenancy plan -var-file=../../envs/lab/lab.tfvars`
 with a `backend_override.tf` for local state.
 
 ## Known limit

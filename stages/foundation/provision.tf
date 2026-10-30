@@ -42,7 +42,7 @@ output "scheme_ids" {
 }
 
 # The contract JSM needs to create instances from the templates, and the stamp it must set so
-# stages/conform can tell which template an instance belongs to. Written to contracts/<env>.json
+# stages/estate can tell which template an instance belongs to. Written to contracts/<env>.json
 # by the pipeline after apply; nothing in it is secret.
 output "contract" {
   value = {

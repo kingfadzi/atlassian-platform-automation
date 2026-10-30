@@ -14,7 +14,7 @@ fmt:
 	$(TF) fmt -check -recursive
 
 validate:
-	@for s in bootstrap foundation conform; do \
+	@for s in tenancy foundation estate; do \
 	  $(TF) -chdir=stages/$$s init -backend=false -input=false >/dev/null && $(TF) -chdir=stages/$$s validate || exit 1; done
 
 test:
@@ -22,7 +22,7 @@ test:
 	$(TF) -chdir=modules/control_evaluation init -input=false >/dev/null && $(TF) -chdir=modules/control_evaluation test
 	$(PY) -m pytest -q tests/govern
 
-spike:                          ## bootstrap, foundation and conform against the stub tenant: drift, recovery, estate findings, refusals
+spike:                          ## tenancy, foundation and estate against the stub tenant: drift, recovery, estate findings, refusals
 	PATH="$(CURDIR)/.venv/bin:$$PATH" tests/spike.sh $(TF)
 
 clean:

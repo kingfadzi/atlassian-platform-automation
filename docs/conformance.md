@@ -1,6 +1,6 @@
 # Estate conformance
 
-The engine holds no list of instances. `stages/conform` discovers every Jira project and Confluence
+The engine holds no list of instances. `stages/estate` discovers every Jira project and Confluence
 space in the tenant, works out which template each belongs to, judges it against
 `policy/conformance.yaml` with the values of its standard, and assigns each failing control a rung.
 It runs after the foundation and refuses a foundation evaluation older than `windows_days.foundation`.
@@ -15,12 +15,12 @@ standard); anything else is judged against `fallback_standard`. A missing stamp 
 
 ## Facts, controls, rungs
 
-Per-instance facts are listed at the top of `stages/conform/facts.tf`. A control is a fact, a
+Per-instance facts are listed at the top of `stages/estate/facts.tf`. A control is a fact, a
 requirement (same eight operators as the foundation) and an `action`:
 
 | Rung | Meaning | Executor |
 |---|---|---|
-| `report` | finding in the conform output and the gate ledger | now |
+| `report` | finding in the estate output and the gate ledger | now |
 | `flag` | comment and status on the instance's `Asset` record in JSM | phase 3 |
 | `restrict` | remove or re-attach an engine-owned setting (for example put a project back on its standard's scheme) as a gated apply | phase 4 |
 | `archive` | archive the instance after its window, as a gated apply | phase 4 |
@@ -38,7 +38,7 @@ were created outside the service). The record is where `flag` will land: a comme
 transition to Attention (`jsm/asset-workflow.yaml`). The treatment project itself is platform
 desired state and is excluded from the instance list.
 
-## What conform never does
+## What estate never does
 
 Create a project or space; create or change a group; remove a group from a role (offboarding is a
 JSM request); delete anything. Its only resources are `terraform_data` preconditions, so a plan

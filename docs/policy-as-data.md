@@ -31,7 +31,7 @@ vocabulary at the top of that file, and then usable from YAML. Nothing else move
   `effective_from` and an optional `lab: not_applicable`.
 - `policy/standards/<id>.yaml`: a template. Roles, per-role grants, space roles, project types,
   lifecycle windows and the description template live here. The foundation provisions one scheme
-  per standard from it; `conform` judges instances against it. Modules carry no policy defaults.
+  per standard from it; `estate` judges instances against it. Modules carry no policy defaults.
 - `policy/conformance.yaml`: what every instance must satisfy, the rung (`report`, `flag`,
   `restrict`, `archive`) for each failing control, how instances name their template (`stamp`) and
   what counts as public access.
@@ -48,7 +48,7 @@ change can be traced to the register entry that caused it.
 Eight, and the set is a ceiling: `equals`, `empty`, `at_least`, `within_days`,
 `attested_within_days`, `superset_of`, `subset_of`, `contains`. `value_from` takes the required
 value from the stage's intent map instead of a literal (`foundation.*` from tfvars, `policy.*`
-derived from the policy files, `standard.*` and `tenant.*` per instance in `conform`); when it
+derived from the policy files, `standard.*` and `tenant.*` per instance in `estate`); when it
 resolves to null or an empty collection the control is `not_applicable` because there is nothing
 to require. A number is always applicable. A fact that could
 not be read gives `unknown`, which counts as unsatisfied for a mandatory control. When a requirement
@@ -70,7 +70,7 @@ requirement shows as a different hash; review records stay bound to the rules of
 - Tightened or relaxed requirement: edit `value`, `mandatory` or the window; the catalogue `version`
   (a date, `YYYY-MM`) moves with it.
 - New or changed standard: a new file with `supersedes`; the old file stays in `policy/standards/`
-  so instances created under it remain explainable; `conform` reports them as `standard_current` findings.
+  so instances created under it remain explainable; `estate` reports them as `standard_current` findings.
 - `effective_from` annotates when a requirement took effect; it does not schedule or hide a control.
 
 ## What is deliberately not here

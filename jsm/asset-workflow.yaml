@@ -7,7 +7,7 @@ statuses:
   - { name: Requested,  category: new }
   - { name: Approved,   category: indeterminate }
   - { name: Active,     category: indeterminate }   # the instance exists and conforms
-  - { name: Attention,  category: indeterminate }   # conform flagged a finding (phase 4 executor)
+  - { name: Attention,  category: indeterminate }   # estate flagged a finding (phase 4 executor)
   - { name: Archived,   category: done }
   - { name: Declined,   category: done }
 transitions:

@@ -2,10 +2,10 @@
 # happens when it does not. Instances are created by JSM from the templates; this file is the
 # only place "compliant" is defined for them. Each control is a fact, a requirement and a rung:
 #
-#   fact      a per-instance observation from stages/conform/facts.tf (vocabulary listed there)
+#   fact      a per-instance observation from stages/estate/facts.tf (vocabulary listed there)
 #   require   { op, value } or { op, value_from } with value_from in standard.* or tenant.*
 #   depends   [jira] applies to projects, [confluence] to spaces
-#   action    report   finding in the conform output and the gate ledger
+#   action    report   finding in the estate output and the gate ledger
 #             flag     comment and status on the instance's Asset record in JSM (phase 3)
 #             restrict remove or re-attach an engine-owned setting, as a gated apply (phase 4)
 #             archive  archive the instance after the window, as a gated apply (phase 4)

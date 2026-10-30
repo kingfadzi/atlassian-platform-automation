@@ -1,6 +1,6 @@
 # Inputs of every stage: where the tenant is and what the engine should expect of it. There is
 # no instance here: no project, space, group or person. Templates are policy/standards; instances
-# are created by JSM and judged by stages/conform. Rules the inputs must satisfy are data
+# are created by JSM and judged by stages/estate. Rules the inputs must satisfy are data
 # (policy/intent_rules.yaml); the validations only apply them.
 
 locals {
