@@ -86,10 +86,10 @@ def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | 
         mine = [c for c in controls if c.get("phase") == p["id"]]
         if instance_scoped(mine):
             if summary is None:
-                lines += _phase_header(p, "not run", mine, None)
+                lines += _phase_header(p, "not run", mine, None, records)
                 continue
             state = "findings" if summary.get("non_conforming") else "ok"
-            lines += _phase_header(p, state, mine, None)
+            lines += _phase_header(p, state, mine, None, records)
             lines.append(f"{'':<21} {summary.get('projects', 0)} projects, {summary.get('spaces', 0)} spaces, "
                          f"{summary.get('non_conforming', 0)} non-conforming, {summary.get('unstamped', 0)} unstamped")
             lines.append(f"{'':<21} {len(estate_findings)} findings across the estate")
@@ -98,7 +98,7 @@ def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | 
 
         seen = {k: v for k, v in verdicts.items() if k in {c["id"] for c in mine}}
         state = phase_state(mine, seen)
-        lines += _phase_header(p, state, mine, seen)
+        lines += _phase_header(p, state, mine, seen, records)
         lines.append("")
 
     lines.append("readiness: " + (", ".join(f"{k}={'ready' if v else 'blocked'}" for k, v in sorted(ready.items()))
@@ -106,13 +106,16 @@ def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | 
     return "\n".join(lines)
 
 
-def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None) -> list[str]:
+def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None,
+                  records: str = "records/lab") -> list[str]:
+    by_id = {c['id']: c for c in mine}
     lines = [f"{p['id']:<11} {state:<9} {p['title']}",
              f"{'':<21} covers: {p['covers']}"]
     if state == "not run":
         lines.append(f"{'':<21} {_count(len(mine))}, none evaluated yet. acts: {p['acts']}")
         for cid, _, who in outstanding(mine, seen or {}):
             lines.append(f"{'':<21}   [ ] {cid}  ({who})")
+            lines += _instructions(by_id[cid], records)
         return lines
     if seen is None:
         return lines
@@ -120,6 +123,7 @@ def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None) -> l
     if rows:
         for cid, verdict, who in rows:
             lines.append(f"{'':<21}   {verdict:<14} {cid}  owed by {who}")
+            lines += _instructions(by_id[cid], records)
     elif all(seen.get(c["id"]) == "not_applicable" for c in mine):
         lines.append(f"{'':<21} {_count(len(mine))}, none applicable here")
     else:
@@ -129,3 +133,15 @@ def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None) -> l
 
 def _count(n: int) -> str:
     return f"{n} control" if n == 1 else f"{n} controls"
+
+
+def _instructions(control: dict, records: str) -> list[str]:
+    """Where to go and what to do, from the control itself. An attested control also needs the
+    step recorded, so name the file."""
+    if "where" not in control:
+        return []
+    lines = [f"{'':<21}     where: {control['where']}",
+             f"{'':<21}     todo:  {control['todo']}"]
+    if control.get("fact") == "attestation":
+        lines.append(f"{'':<21}     then:  record it in {records}/attestations.yaml")
+    return lines

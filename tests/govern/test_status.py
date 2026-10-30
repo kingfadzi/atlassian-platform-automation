@@ -87,3 +87,38 @@ def test_instance_controls_are_owed_by_the_engine():
     assert status.owed_by({"provision": "runbook"}) == "console"
     assert status.owed_by({"provision": "engine"}) == "engine"
     assert status.owed_by({}) == "unspecified"
+
+
+def test_every_console_control_says_where_and_what():
+    """The view renders these, so a missing one would print a blank instruction."""
+    bare = [c["id"] for c in CONTROLS
+            if c.get("provision") == "runbook" and not (c.get("where") and c.get("todo"))]
+    assert bare == []
+
+
+def test_an_outstanding_console_control_prints_its_instructions():
+    verdicts = {c["id"]: "pass" for c in CONTROLS}
+    verdicts["native_space_creation_closed"] = "fail"
+    text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)),
+                         records="records/lab")
+    assert "where: Confluence > Settings > Global permissions" in text
+    assert "todo:  Grant Create space" in text
+    assert "then:  record it in records/lab/attestations.yaml" in text
+
+
+def test_only_attested_controls_name_the_record_file():
+    observed = next(c for c in CONTROLS
+                    if c.get("provision") == "runbook" and c.get("fact") != "attestation")
+    verdicts = {c["id"]: "pass" for c in CONTROLS}
+    verdicts[observed["id"]] = "fail"
+    text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)))
+    assert observed["id"] in text
+    assert "record it in" not in text
+
+
+def test_the_records_path_follows_the_environment():
+    verdicts = {c["id"]: "pass" for c in CONTROLS}
+    verdicts["native_project_creation_closed"] = "fail"
+    text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)),
+                         records="records/prod")
+    assert "records/prod/attestations.yaml" in text
