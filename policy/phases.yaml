@@ -1,0 +1,39 @@
+# The stand-up sequence. Dependency order: a phase assumes the ones above it are satisfied.
+# Every control in policy/foundation.yaml and policy/conformance.yaml names one phase here.
+# Each phase is also a stage under stages/ and a command in the Makefile.
+#
+# acts: console = a person does it in an admin console or by procurement, the engine only observes
+#       engine  = the engine provisions it from policy and reads it back
+#       mixed   = some of each
+version: 2026-10
+owner: PLATFORM-GOV
+
+phases:
+  - id: tenancy
+    title: The organisation, its products, and where data sits
+    covers: organisation, sites, products, residency realm, administrative custody, subscriptions
+    acts: console
+  - id: identity
+    title: Access follows corporate identity
+    covers: verified domains, Guard, federation, provisioning, authentication policy, exceptional accounts
+    acts: console
+  - id: guardrails
+    title: The estate is closed by default
+    covers: anonymous access, public links, native creation, sharing defaults, audit collection
+    acts: console
+  - id: standards
+    title: What a project or space of each class gets
+    covers: site-wide roles, one permission scheme per standard, the contract intake needs
+    acts: engine
+  - id: intake
+    title: How people ask for a project or space
+    covers: the asset-treatment service, its request types, Asset records, workflow and automation
+    acts: mixed
+  - id: readiness
+    title: Whether workloads may land, and the proof
+    covers: per-product readiness, what is still owed by hand, the evidence bundle
+    acts: engine
+  - id: estate
+    title: Every instance, its standard, and its deviations
+    covers: discovery, classification, conformance, the rung each deviation earns
+    acts: engine

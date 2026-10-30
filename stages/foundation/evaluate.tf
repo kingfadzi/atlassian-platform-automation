@@ -2,8 +2,9 @@
 # generic evaluation. Nothing about individual controls is decided in this stage's HCL.
 
 locals {
-  catalogue = yamldecode(file("${path.module}/../../policy/foundation.yaml"))
-  now       = plantimestamp()
+  catalogue_controls = local.catalogue.controls
+  catalogue          = yamldecode(file("${path.module}/../../policy/foundation.yaml"))
+  now                = plantimestamp()
   # Values a requirement may reference through value_from: the intent's foundation block and
   # a few derived from policy files (so a catalogue entry never repeats what a standard says).
   intent = merge(
@@ -33,4 +34,21 @@ locals {
   blocking = module.evaluation.blocking
   findings = module.evaluation.findings
   ready    = module.evaluation.ready
+}
+
+# Every control must name a phase defined in policy/phases.yaml. A mistyped phase is a
+# configuration error at plan time, never a control that quietly evaluates against nothing.
+resource "terraform_data" "phases_are_known" {
+  lifecycle {
+    precondition {
+      condition = length(setsubtract(
+        distinct([for c in local.catalogue_controls : try(c.phase, "")]),
+        [for p in yamldecode(file("${path.module}/../../policy/phases.yaml")).phases : p.id]
+      )) == 0
+      error_message = "Controls name phases that policy/phases.yaml does not define: ${join(", ", setsubtract(
+        distinct([for c in local.catalogue_controls : try(c.phase, "")]),
+        [for p in yamldecode(file("${path.module}/../../policy/phases.yaml")).phases : p.id]
+      ))}."
+    }
+  }
 }

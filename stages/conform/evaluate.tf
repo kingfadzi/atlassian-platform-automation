@@ -63,3 +63,20 @@ resource "terraform_data" "policy_is_consistent" {
     }
   }
 }
+
+# Every control must name a phase defined in policy/phases.yaml. A mistyped phase is a
+# configuration error at plan time, never a control that quietly evaluates against nothing.
+resource "terraform_data" "phases_are_known" {
+  lifecycle {
+    precondition {
+      condition = length(setsubtract(
+        distinct([for c in flatten([for k, v in local.catalogue : v.controls]) : try(c.phase, "")]),
+        [for p in yamldecode(file("${path.module}/../../policy/phases.yaml")).phases : p.id]
+      )) == 0
+      error_message = "Controls name phases that policy/phases.yaml does not define: ${join(", ", setsubtract(
+        distinct([for c in flatten([for k, v in local.catalogue : v.controls]) : try(c.phase, "")]),
+        [for p in yamldecode(file("${path.module}/../../policy/phases.yaml")).phases : p.id]
+      ))}."
+    }
+  }
+}
