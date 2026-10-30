@@ -13,4 +13,5 @@ foundation = {
   domains               = [] # fill once the lab organisation has a verified domain
   product_access_groups = [] # empty = report default access groups without judging them
   banner_contains       = "governed"
+  approved_realms       = ["global"] # what this site reports; the lab is permitted global in policy
 }

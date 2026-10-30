@@ -11,6 +11,7 @@ PORT=8089
 export TF_IN_AUTOMATION=1 TF_INPUT=0
 export TF_VAR_atlassian_org_api_key=stub TF_VAR_atlassian_email=admin@lab TF_VAR_atlassian_api_token=stub
 export TF_VAR_admin_api_url="http://127.0.0.1:$PORT/admin"
+export TF_VAR_env=lab
 # runtime fixture: the committed records plus import attestations carrying the current jsm/ file hashes
 rm -rf /tmp/spike-runtime && cp -r "$ROOT/tests/stub/runtime" /tmp/spike-runtime
 for f in asset_workflow:jsm/asset-workflow.yaml automation_rules:jsm/automation-rules.json; do
@@ -191,6 +192,24 @@ echo "  rules edited: ready.treatment = $(out foundation ready | python3 -c 'imp
 cp /tmp/spike-rules.json "$ROOT/jsm/automation-rules.json"; rm -f /tmp/spike-rules.json
 apply_quiet foundation
 echo "  restored: ready.treatment = $(out foundation ready | python3 -c 'import json,sys; print(json.load(sys.stdin)["treatment"])')"
+
+echo "[placement] a realm outside the environment's permitted set must block, from policy alone"
+curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/product_placement_permitted" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+echo "  realm us, lab permits global: ready = $("$TF" -chdir="$ROOT/stages/foundation" output -json ready | tr -d '\n ')"
+echo "  blocking = $("$TF" -chdir="$ROOT/stages/foundation" output -json blocking | tr -d '\n ')"
+"$TF" -chdir="$ROOT/stages/foundation" output -json blocking | grep -q product_placement_permitted \
+  || { echo "  FAIL: an unpermitted realm did not block"; exit 1; }
+"$TF" -chdir="$ROOT/stages/foundation" output -json blocking | grep -q product_placement_matches_intent \
+  || { echo "  FAIL: a realm that is not the declared one did not block"; exit 1; }
+sedi 's/^  lab: \[global\]/  lab: [global, us]/' "$ROOT/policy/intent_rules.yaml"
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1 || true
+"$TF" -chdir="$ROOT/stages/foundation" output -json blocking | grep -q product_placement_permitted \
+  && { echo "  FAIL: permitting the realm in YAML did not clear the control"; exit 1; }
+echo "  permitted in YAML alone: product_placement_permitted cleared; intent mismatch still blocks"
+sedi 's/^  lab: \[global, us\]/  lab: [global]/' "$ROOT/policy/intent_rules.yaml"
+curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/product_placement_permitted" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
 
 echo "[destroy] removing a provisioned role from policy must be refused"
 cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml
