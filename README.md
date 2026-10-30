@@ -16,7 +16,7 @@ gate, no destroy job. The repo holds no instance: no project, space, group or pe
 | Change the asset-treatment service: request types, Asset fields, project | `policy/treatment.yaml`; workflow and automation in `jsm/` (imported by hand, attested by hash) |
 | Change who may hold admin, engine or emergency access | `policy/identities.yaml` |
 | Change what the gate blocks or reports | `policy/gate.yaml` |
-| Do a console-only foundation step and record it | `docs/runbook-foundation.md`, then `records/<env>/attestations.yaml` |
+| Do a console-only foundation step and record it | `make <phase>` prints where and what; record it in `records/<env>/attestations.yaml` |
 | Point at a tenant | `envs/<env>/<env>.tfvars`: organisation, directory, site URL, AD group pattern |
 | Read a new property of the tenant or of an instance | one fact block in `stages/foundation/facts.tf` or `stages/estate/facts.tf` (plus its `data "http"`) |
 | Add a provisioned resource kind | a new folder under `modules/` with one `restapi_object` and a `check`, wired in `stages/foundation/provision.tf` |
@@ -47,29 +47,42 @@ Identity boundary.
 
 ## Layout
 
+What you edit.
+
 ```
-envs/lab/lab.tfvars            tenant coordinates (operator surface, no secrets, no instances)
-envs/shared/*.tf               input shape and validations (rules read from policy/), providers, credentials, backend; symlinked into stages
-stages/tenancy               observe tenancy, products and the engine identity
-stages/foundation              provision.tf (roles, scheme per standard, contract), treatment.tf (JSM service) -> observe.tf -> facts.tf -> evaluate.tf -> readiness
-stages/estate                 observe every project and space -> facts.tf -> evaluate.tf (per instance) -> findings and planned actions
-modules/                       jira_project_role, jira_permission_scheme, jira_project, jira_issue_type, jira_issue_type_in_scheme, jira_custom_field,
-                               jsm_request_type, control_evaluation (generic fact-versus-requirement, own tests)
-policy/foundation.yaml         shared foundation catalogue: per control a fact, a requirement and who provisions it
+envs/<env>/<env>.tfvars        tenant coordinates: organisation, directory, site URL, AD group pattern
+policy/phases.yaml             the stand-up sequence: what each phase covers and who acts
+policy/foundation.yaml         shared controls: a fact, a requirement, who provisions it, and the console step
 policy/standards/<id>.yaml     templates: roles, per-role grants, space roles, project types, lifecycle windows
 policy/conformance.yaml        instance controls, the action rung per control, stamp and public-access definitions
-policy/treatment.yaml          the asset-treatment service: JSM project, Asset issue type and fields, request types, declared imports
-jsm/                           declared workflow and automation rules for the service; imported by hand, attested by file hash
-policy/identities.yaml         exceptional identities: admin, engine and emergency accounts with owner and review date
-policy/intent_rules.yaml       naming rules for what the engine provisions
-policy/gate.yaml               gate rules, currency windows, policy files hashed into the ledger
-govern/                        gate, currency, review, provenance, cli
-docs/                          policy-as-data.md, runbook-foundation.md, conformance.md
-records/<env>/                 attestations, authority, exceptions (outside Git in anything but the lab)
-contracts/<env>.json           written by the pipeline after the foundation apply; what JSM reads to create instances
-tests/intent                   terraform test for the input rules (no tenant needed)
-tests/govern                   gate unit tests on recorded plan JSON
-tests/stub, tests/spike.sh     stateful stub of the tenant (and of JSM, via seed_estate.py) and the end-to-end spike
+policy/treatment.yaml          the asset-treatment service: JSM project, Asset issue type and fields, request types, imports
+policy/identities.yaml         exceptional identities: admin, engine and emergency accounts, with owner and review date
+policy/intent_rules.yaml       naming rules, and the realms each environment may place data in
+policy/gate.yaml               what the gate blocks or reports, currency windows, policy files hashed into the ledger
+jsm/                           declared workflow and automation rules for the service, attested by file hash
+records/<env>/                 attestations, authority and exceptions you record after a console step
+```
+
+What you read.
+
+```
+make, make <phase>             where the platform stands and what is outstanding
+docs/policy-as-data.md         the three layers: requirements, facts, evaluation
+docs/runbook-foundation.md     recording an attestation, what a plan allows before you attest, recovery
+docs/conformance.md            how an instance is classified and judged, and the rung a deviation earns
+contracts/<env>.json           written after the foundation apply; what JSM reads to create instances
+```
+
+Machinery. An operator never opens these.
+
+```
+stages/tenancy                 observe the organisation, its products and the engine identity
+stages/foundation              provision roles and a scheme per standard, stand up the service, then observe and judge
+stages/estate                  discover every project and space, then judge each against the standard it claims
+envs/shared/*.tf               input shape and validations, providers, credentials, backend; symlinked into stages
+modules/                       one restapi_object per resource kind, plus control_evaluation (generic, own tests)
+govern/                        the gate, currency, review, provenance, the status view, cli
+tests/                         input rules, gate units, the stub tenant and the end-to-end spike
 ```
 
 ## Lifecycle
@@ -104,11 +117,15 @@ the hashes of the policy files it was made under.
 ## Local
 
 ```
-make check                     fmt, validate, terraform test (input rules, evaluation operators), gate tests
-make spike                     tenancy, foundation and estate against the stub: create, three clean re-plans, drift reported,
+make                           the stand-up sequence and where you are in it
+make <phase>                   one phase: what is required, what is outstanding, and who owes it
+make status                    every phase at once
+make try                       tenancy, foundation and estate against the stub: create, three clean re-plans, drift reported,
                                removed grant detected and recovered, ten seeded instances judged against their Asset records,
                                stale foundation refused, YAML-only changes flip readiness and a verdict, an edited jsm/ file
                                invalidates its attestation, removal from policy refused
+make check                     fmt, validate, terraform test (input rules, evaluation operators), gate tests
+make deps                      the local Python environment
 ```
 
 ## Lab tenant
