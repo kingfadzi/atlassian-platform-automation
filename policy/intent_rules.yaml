@@ -5,3 +5,9 @@ owner: PLATFORM-GOV
 
 standard_id_pattern: "^[a-z0-9-]+-v[0-9]+$"   # standards are versioned files in policy/standards
 role_name_template: "platform-{role}"          # site-wide Jira project role names provisioned by the foundation
+
+# Residency realms each environment may place product data in. Realm values are those the
+# workspaces payload reports. An environment declares which it is (var.env); policy grants.
+permitted_realms:
+  lab: [global]   # synthetic data only, so no residency requirement applies
+  prod: [eu]      # supported product data pinned to the EU

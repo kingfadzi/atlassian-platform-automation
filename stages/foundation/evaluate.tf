@@ -15,6 +15,7 @@ locals {
       "policy.scheme_grants"    = flatten([for s in local.standards : [for role, perms in s.jira.role_permissions : [for p in perms : "${s.jira.scheme_name}|${p}|${local.role_names[role]}"]]])
       "policy.space_role_names" = distinct(flatten([for s in local.standards : values(s.confluence.space_roles)]))
       "policy.admin_accounts"   = [for a in local.identities.accounts : a.id]
+      "policy.permitted_realms" = lookup(local.rules.permitted_realms, var.env, [])
     },
     local.treatment_intent, # treatment.tf
   )

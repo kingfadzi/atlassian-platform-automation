@@ -21,6 +21,30 @@ gate, no destroy job. The repo holds no instance: no project, space, group or pe
 | Read a new property of the tenant or of an instance | one fact block in `stages/foundation/facts.tf` or `stages/conform/facts.tf` (plus its `data "http"`) |
 | Add a provisioned resource kind | a new folder under `modules/` with one `restapi_object` and a `check`, wired in `stages/foundation/provision.tf` |
 
+## Boundaries
+
+What the engine does.
+
+- Provisions everything above the tenancy as code.
+- Proves the tenancy itself was established correctly and has not drifted.
+- Judges every instance against the standard it names.
+
+What the engine never does. No API exists for any of it; these are signup, console or procurement acts.
+
+- Create an organisation, a site or a product.
+- Choose data residency. It is selected when a site is created and is not reversible afterwards.
+- Verify a domain, buy a subscription, or configure SAML.
+- Create an account, a group, or a group membership.
+
+Identity boundary.
+
+- The identity provider owns principals: accounts, group existence, group membership.
+- The engine owns containers and grants: project roles, permission schemes, issue security, space permissions.
+- Groups are referenced by name, never created.
+- `tenant.group_pattern` asserts which group names the identity provider owns.
+- `groups_match_ad_pattern` catches a locally created group bound to a role.
+- An earlier `directory_group` module created groups. Removed deliberately; it must not return.
+
 ## Layout
 
 ```

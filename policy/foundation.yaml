@@ -104,23 +104,41 @@ controls:
     fact: default_access_groups
     require: { op: subset_of, value_from: foundation.product_access_groups }
 
+  # Mandatory: Guard manages only accounts whose address sits in a verified domain, so a declared
+  # domain that is not verified leaves those accounts unmanaged. An empty declaration requires
+  # nothing, so this is inert until the tenant names its domains.
   - id: verified_domains_known
     phase: identity
     title: Verified domains include those in the intent
     provision: external
-    mandatory: false
+    effective_from: 2026-10-30
+    mandatory: true
     depends: [jira, confluence]
     fact: verified_domains
     require: { op: superset_of, value_from: foundation.domains }
 
-  - id: org_policies_enabled
+  # Placement, two controls on one fact. The first catches a tenant that no longer matches what
+  # the environment declared; the second catches an environment using a realm it is not permitted.
+  # Only the first reads intent, so editing intent cannot satisfy the second.
+  - id: product_placement_matches_intent
     phase: tenancy
-    title: Data residency policy present and enabled
-    provision: runbook
-    mandatory: false
+    title: Product residency realms match the declared tenant
+    provision: external
+    effective_from: 2026-10-30
+    mandatory: true
     depends: [jira, confluence]
-    fact: enabled_policy_types
-    require: { op: superset_of, value: [data-residency] }
+    fact: product_realms
+    require: { op: subset_of, value_from: foundation.approved_realms }
+
+  - id: product_placement_permitted
+    phase: tenancy
+    title: Product residency realms are permitted for this environment
+    provision: external
+    effective_from: 2026-10-30
+    mandatory: true
+    depends: [jira, confluence]
+    fact: product_realms
+    require: { op: subset_of, value_from: policy.permitted_realms }
 
   - id: confluence_audit_retention
     phase: guardrails

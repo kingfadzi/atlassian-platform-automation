@@ -30,6 +30,7 @@ variable "foundation" {
     product_access_groups          = optional(list(string), [])   # groups allowed as default product access; empty = not checked
     banner_contains                = optional(string, "governed") # text the announcement banner must carry
     confluence_free_seats_plus_one = optional(number, 11)         # Free tier is 10 seats; capacity above it implies a paid plan
+    approved_realms                = optional(list(string), [])   # residency realms this tenant is expected to be in; empty = not checked
   })
   description = "Tenant specifics for the non-mandatory foundation controls (see policy/foundation.yaml)."
   default     = {}
@@ -39,4 +40,11 @@ variable "runtime_dir" {
   type        = string
   description = "Directory holding attestations.yaml, authority.yaml and exceptions.yaml (outside Git in anything but the lab)."
   default     = "../../runtime/lab"
+}
+
+# The environment this plan is for. Policy keys its per-environment requirements on this, so the
+# environment declares which it is and policy decides what it may do.
+variable "env" {
+  type    = string
+  default = "lab"
 }
