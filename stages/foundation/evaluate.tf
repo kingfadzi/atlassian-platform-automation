@@ -42,6 +42,13 @@ locals {
 resource "terraform_data" "phases_are_known" {
   lifecycle {
     precondition {
+      condition = length([for c in local.catalogue_controls :
+        c.id if try(c.provision, "") == "runbook" && (try(c.where, "") == "" || try(c.todo, "") == "")
+      ]) == 0
+      error_message = "A console control must say where to go and what to do: ${join(", ", [for c in local.catalogue_controls :
+      c.id if try(c.provision, "") == "runbook" && (try(c.where, "") == "" || try(c.todo, "") == "")])}."
+    }
+    precondition {
       condition = length(setsubtract(
         distinct([for c in local.catalogue_controls : try(c.phase, "")]),
         [for p in yamldecode(file("${path.module}/../../policy/phases.yaml")).phases : p.id]

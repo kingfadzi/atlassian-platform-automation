@@ -12,7 +12,7 @@
 #   confluence_audit_retention_days  number   Confluence audit retention converted to days
 #   announcement_banner_text         string   banner message when enabled, else ""
 #   default_access_groups            list     default product-access groups across application roles
-#   attestation                      map      attestation id => recorded (RFC 3339), from runtime_dir
+#   attestation                      map      attestation id => recorded (RFC 3339), from records_dir
 #   jira_project_roles               list     site-wide project role names
 #   permission_scheme_names          list     permission scheme names on the site
 #   scheme_grants                    list     "scheme name|PERMISSION|role name" for every grant to a project role
@@ -44,7 +44,7 @@ locals {
 
   schemes        = try(local.json.schemes.permissionSchemes, [])
   retention_unit = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
-  attestations   = try(yamldecode(file("${var.runtime_dir}/attestations.yaml")).records, [])
+  attestations   = try(yamldecode(file("${var.records_dir}/attestations.yaml")).records, [])
 
   tenant_facts = {
     anonymous_jira_projects = {

@@ -33,10 +33,10 @@ $(OUT):
 	    || echo '{}' > $(OUT)/$$s.json; done
 
 status: $(OUT)                  ## every phase at once
-	@$(PY) -m govern.cli status $(foreach s,$(STAGES),--outputs $(s)=$(OUT)/$(s).json)
+	@$(PY) -m govern.cli status --records records/$(ENV) $(foreach s,$(STAGES),--outputs $(s)=$(OUT)/$(s).json)
 
 $(PHASES): $(OUT)
-	@$(PY) -m govern.cli status --phase $@ $(foreach s,$(STAGES),--outputs $(s)=$(OUT)/$(s).json)
+	@$(PY) -m govern.cli status --phase $@ --records records/$(ENV) $(foreach s,$(STAGES),--outputs $(s)=$(OUT)/$(s).json)
 
 try:                            ## the whole platform offline against a stub tenant
 	PATH="$(CURDIR)/.venv/bin:$$PATH" tests/spike.sh $(TF)
