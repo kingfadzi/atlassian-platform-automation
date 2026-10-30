@@ -40,7 +40,12 @@ def application_roles():
 
 @foundation.get("/admin/v1/orgs/<org>/domains")
 def domains(org):
-    return jsonify({"data": [{"id": "d1", "type": "domains", "attributes": {"name": "lab.example", "claim": {"status": "verified"}}}]})
+    """Every TLD an organisation has claimed. Guard manages only accounts whose address sits in
+    one of these, so an estate spanning several TLDs has to verify each."""
+    names = ["lab.example"] if "verified_domains_known" in failing else ["lab.example", "lab.test"]
+    return jsonify({"data": [{"id": f"d{i}", "type": "domains",
+                              "attributes": {"name": n, "claim": {"status": "verified"}}}
+                             for i, n in enumerate(names, 1)]})
 
 
 @foundation.get("/admin/v1/orgs/<org>/policies")

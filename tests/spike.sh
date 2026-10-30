@@ -211,6 +211,18 @@ sedi 's/^  lab: \[global, us\]/  lab: [global]/' "$ROOT/policy/intent_rules.yaml
 curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/product_placement_permitted" >/dev/null
 "$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
 
+echo "[domains] every declared TLD must be verified; one missing blocks"
+curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/verified_domains_known" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+echo "  one of two TLDs verified: blocking = $("$TF" -chdir="$ROOT/stages/foundation" output -json blocking | tr -d '\n ')"
+"$TF" -chdir="$ROOT/stages/foundation" output -json blocking | grep -q verified_domains_known \
+  || { echo "  FAIL: an unverified declared domain did not block"; exit 1; }
+curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/verified_domains_known" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/dev/null 2>&1
+"$TF" -chdir="$ROOT/stages/foundation" output -json blocking | grep -q verified_domains_known \
+  && { echo "  FAIL: both TLDs verified but the control still blocks"; exit 1; }
+echo "  both verified: cleared"
+
 echo "[destroy] removing a provisioned role from policy must be refused"
 cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml
 sedi 's/^roles: \[admin, lead, member, viewer\]/roles: [admin, lead, member]/; /^    viewer: /d' "$ROOT/policy/standards/restricted-collab-v1.yaml"
