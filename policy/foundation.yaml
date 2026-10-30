@@ -129,6 +129,33 @@ controls:
     fact: verified_domains
     require: { op: superset_of, value_from: foundation.domains }
 
+  # Verification is a standing dependency on a TXT record owned by whoever runs the zone, which
+  # Atlassian says to keep permanently. claim.status above only moves once Atlassian re-checks,
+  # so read DNS directly: a removed record is reported here before verified_domains_known fails.
+  - id: domain_verification_record_present
+    phase: identity
+    title: Domain verification records still resolve in DNS
+    provision: external
+    where: "the DNS zone of each domain in foundation.domains, with the team that owns it"
+    todo: "Restore the atlassian-domain-verification TXT record. It must stay in place permanently, not only until verification first completes."
+    effective_from: 2026-10-30
+    mandatory: false
+    depends: [jira, confluence]
+    fact: domains_missing_verification_record
+    require: { op: empty }
+
+  - id: domain_claimed_by_one_org
+    phase: identity
+    title: No second organisation has verified these domains
+    provision: external
+    where: "admin.atlassian.com > Settings > Domains"
+    todo: "Find which other organisation claims the domain and have the claim removed; a second claim lets another tenant manage accounts in it."
+    effective_from: 2026-10-30
+    mandatory: false
+    depends: [jira, confluence]
+    fact: domains_claimed_by_other_orgs
+    require: { op: empty }
+
   # Placement, two controls on one fact. The first catches a tenant that no longer matches what
   # the environment declared; the second catches an environment using a realm it is not permitted.
   # Only the first reads intent, so editing intent cannot satisfy the second.

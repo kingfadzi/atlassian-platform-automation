@@ -97,8 +97,8 @@ Every foundation control says who makes it true: `engine` (provisioned here from
 engine creates is read back from the tenant and judged like any other fact. Lab mandatory core:
 anonymous Jira and Confluence closed, no public scheme grants, audit collection live, public links
 attested off, the provisioned templates present and complete, Confluence space roles available, native
-project and space creation closed, exceptional identities listed and reviewed. Ten further controls
-are reported, not blocking.
+project and space creation closed, exceptional identities listed and reviewed. Twelve further
+controls are reported, not blocking.
 
 Instances are created through the asset-treatment service (`ATS`, a JSM project the foundation
 provisions with an `Asset` issue type, its fields and onboard, change, review and retire request

@@ -39,11 +39,14 @@ output "findings" { value = local.findings }
 output "details" {
   description = "Stable fact values useful to a reviewer (volatile ones such as timestamps are excluded)."
   value = {
-    public_grants         = local.facts.scheme_grants_to_anyone.value
-    sitewide_browse       = local.facts.scheme_browse_for_all_licensed.value
-    domains               = local.facts.verified_domains.value
-    confluence_retention  = local.facts.confluence_audit_retention_days.value
-    default_access_groups = local.facts.default_access_groups.value
+    public_grants   = local.facts.scheme_grants_to_anyone.value
+    sitewide_browse = local.facts.scheme_browse_for_all_licensed.value
+    domains         = local.facts.verified_domains.value
+    # null, not an empty list: no resolver declared means DNS was never read, which is not the
+    # same as every record resolving.
+    domains_missing_record = local.facts.domains_missing_verification_record.known ? local.facts.domains_missing_verification_record.value : null
+    confluence_retention   = local.facts.confluence_audit_retention_days.value
+    default_access_groups  = local.facts.default_access_groups.value
   }
 }
 output "policy_version" {

@@ -8,6 +8,8 @@
 #   scheme_browse_for_all_licensed   list     schemes granting BROWSE_PROJECTS to applicationRole
 #   latest_org_audit_event           string   RFC 3339 time of the newest organisation audit event
 #   verified_domains                 list     domain names on the organisation
+#   domains_missing_verification_record list  declared domains whose verification TXT record no longer resolves
+#   domains_claimed_by_other_orgs    list     declared domains a second organisation has also verified
 #   product_realms                   list     residency realms of the products on this site
 #   confluence_audit_retention_days  number   Confluence audit retention converted to days
 #   announcement_banner_text         string   banner message when enabled, else ""
@@ -39,8 +41,15 @@ locals {
   role_name_by_id      = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
   admin_member_status  = { for g, d in data.http.admin_group_members : g => d.status_code }
   admin_members        = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
-  status               = { for k, d in local.http : k => d.status_code }
-  json                 = { for k, d in local.http : k => try(jsondecode(d.response_body), {}) }
+  # NOERROR and NXDOMAIN are both definitive answers; any other Status means the resolver did not answer.
+  txt_json       = { for k, d in data.http.domain_txt : k => try(jsondecode(d.response_body), {}) }
+  txt_definitive = alltrue([for k, d in data.http.domain_txt : d.status_code == 200 && contains([0, 3], try(local.txt_json[k].Status, -1))])
+  domain_has_record = { for d in var.foundation.domains : d => anytrue(flatten([for r in var.dns_resolvers :
+    [for a in try(local.txt_json["${d}|${r}"].Answer, []) : strcontains(replace(a.data, "\"", ""), "atlassian-domain-verification=")]
+  ])) }
+  org_domains = try(local.json.domains.data, [])
+  status      = { for k, d in local.http : k => d.status_code }
+  json        = { for k, d in local.http : k => try(jsondecode(d.response_body), {}) }
 
   schemes        = try(local.json.schemes.permissionSchemes, [])
   retention_unit = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
@@ -70,6 +79,16 @@ locals {
     verified_domains = {
       known = local.status.domains == 200
       value = try([for d in local.json.domains.data : d.attributes.name], [])
+    }
+    # Presence of a verification record, not proof it is this organisation's: the API does not
+    # expose the expected token, so claim.status remains the authority on the token itself.
+    domains_missing_verification_record = {
+      known = length(var.dns_resolvers) > 0 && local.txt_definitive
+      value = [for d, present in local.domain_has_record : d if !present]
+    }
+    domains_claimed_by_other_orgs = {
+      known = local.status.domains == 200 && alltrue([for d in local.org_domains : try(d.attributes.verifiedOrgsQuantity, null) != null])
+      value = [for d in local.org_domains : d.attributes.name if try(d.attributes.verifiedOrgsQuantity, 0) > 1]
     }
     product_realms = {
       known = local.status.workspaces == 200 && length(local.site_workspaces) > 0

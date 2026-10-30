@@ -18,6 +18,13 @@ variable "admin_api_url" {
   default = "https://api.atlassian.com/admin"
 }
 
+# DNS-over-HTTPS endpoints the engine resolves domain verification records through. Declared per
+# environment: empty means nothing is resolved and the record facts stay unknown.
+variable "dns_resolvers" {
+  type    = list(string)
+  default = []
+}
+
 locals {
   site_basic_auth = "Basic ${base64encode("${var.atlassian_email}:${var.atlassian_api_token}")}"
 }

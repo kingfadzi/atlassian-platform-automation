@@ -38,6 +38,18 @@ data "http" "domains" {
   request_headers = local.admin_auth
 }
 
+# Read DNS itself, not Atlassian's last re-check of it: the verification record is owned by
+# whoever runs the zone and its removal is invisible here until Atlassian re-checks.
+data "http" "domain_txt" {
+  for_each           = { for p in setproduct(var.foundation.domains, var.dns_resolvers) : "${p[0]}|${p[1]}" => p }
+  url                = "${each.value[1]}?name=${each.value[0]}&type=TXT"
+  request_headers    = { Accept = "application/dns-json" }
+  request_timeout_ms = 5000
+  retry {
+    attempts = 2
+  }
+}
+
 data "http" "confluence_audit_retention" {
   url             = "${var.tenant.site_url}/wiki/rest/api/audit/retention"
   request_headers = local.site_auth

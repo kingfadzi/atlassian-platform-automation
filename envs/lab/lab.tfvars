@@ -15,3 +15,7 @@ foundation = {
   banner_contains       = "governed"
   approved_realms       = ["global"] # what this site reports; the lab is permitted global in policy
 }
+
+# Resolvers the verification TXT records are read through. Unset here because the domains above do
+# not exist; an environment with real domains declares the resolvers it can reach, e.g.
+# dns_resolvers = ["https://dns.google/resolve", "https://cloudflare-dns.com/dns-query"]
