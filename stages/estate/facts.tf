@@ -1,4 +1,4 @@
-# Stage: conform, part 2. Per-instance facts: the vocabulary policy/conformance.yaml may use.
+# Stage: estate, part 2. Per-instance facts: the vocabulary policy/conformance.yaml may use.
 # Each fact is { known, value }. Add a fact here and in observe.tf; never a control id.
 #
 #   stamp                  bool    the instance names a known standard (property or label)

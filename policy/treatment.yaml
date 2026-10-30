@@ -13,7 +13,7 @@ project:
   lead: engine                        # kind in policy/identities.yaml whose account leads the project
   description: "Self-service onboarding, change, review and retirement of Jira projects and Confluence spaces | managed by platform automation"
 
-asset:                                # one record per instance; conform links instances to it
+asset:                                # one record per instance; estate links instances to it
   issue_type: Asset
   description: An instance (Jira project or Confluence space) under treatment
   fields:                             # custom fields created site-wide and placed on the Asset screens (runbook)

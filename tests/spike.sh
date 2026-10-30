@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# End-to-end proof against the stub tenant: bootstrap -> foundation -> conform with local state.
+# End-to-end proof against the stub tenant: tenancy -> foundation -> estate with local state.
 # Proves: create then three clean re-plans; out-of-band drift reported with no actions; a removed
 # provisioned grant detected from the tenant and recovered; every seeded instance defect found
-# by conform with no actions; conform refuses a stale foundation; a YAML-only change flips a
+# by estate with no actions; estate refuses a stale foundation; a YAML-only change flips a
 # verdict; a removal from configuration is refused. Run with: make spike
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,11 +18,11 @@ for f in asset_workflow:jsm/asset-workflow.yaml automation_rules:jsm/automation-
   printf '  - { id: %s, kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB, sha256: "%s" }\n' "${f%%:*}" "$(sha256sum "$ROOT/${f#*:}" | cut -d' ' -f1)" >> /tmp/spike-runtime/attestations.yaml
 done
 VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "runtime_dir=/tmp/spike-runtime")
-STAGES=(bootstrap foundation conform)
+STAGES=(tenancy foundation estate)
 
 (cd "$ROOT/tests/stub" && exec python3 stub_tenant.py "$PORT" >/tmp/stub.log 2>&1) &
 rm -f /tmp/spike-foundation.yaml /tmp/spike-standard.yaml /tmp/spike-rules.json   # copies from an earlier run must never be restored
-STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/conform/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; [ -f /tmp/spike-standard.yaml ] && cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; [ -f /tmp/spike-rules.json ] && cp /tmp/spike-rules.json "$ROOT/jsm/automation-rules.json"; true' EXIT
+STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/estate/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; [ -f /tmp/spike-standard.yaml ] && cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; [ -f /tmp/spike-rules.json ] && cp /tmp/spike-rules.json "$ROOT/jsm/automation-rules.json"; true' EXIT
 sleep 1.5
 
 # BSD sed requires a suffix for -i and GNU accepts one, so edit in place and drop the backup.
@@ -35,8 +35,8 @@ plan_expect_clean() { # stage label
 apply_quiet() { "$TF" -chdir="$ROOT/stages/$1" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-apply.out 2>&1 || true; }
 out() { "$TF" -chdir="$ROOT/stages/$1" output -json "$2"; }
 
-# conform reads the foundation state from a local file in the spike (http backend in the pipeline)
-cat > "$ROOT/stages/conform/remote_state_override.tf" <<'HCL'
+# estate reads the foundation state from a local file in the spike (http backend in the pipeline)
+cat > "$ROOT/stages/estate/remote_state_override.tf" <<'HCL'
 data "terraform_remote_state" "foundation" {
   backend = "local"
   config  = { path = "../foundation/terraform.tfstate" }
@@ -54,7 +54,7 @@ run_stage() { # stage: apply, then three clean re-plans
   "$TF" -chdir="$ROOT/stages/$1" apply -auto-approve -no-color "${VARS[@]}" | grep -E "Apply complete|Error|Warning" | sed "s/^/  /"
   for n in 1 2 3; do plan_expect_clean "$1" "rerun $n"; done
 }
-run_stage bootstrap
+run_stage tenancy
 run_stage foundation
 echo "  contract: $(out foundation contract | python3 -c 'import json,sys; c=json.load(sys.stdin); s=c["standards"]["restricted-collab-v1"]; print("scheme", s["scheme_id"], "roles", s["roles"], "stamp", c["stamp"])')"
 echo "  treatment: $(out foundation contract | python3 -c 'import json,sys; t=json.load(sys.stdin)["treatment"]; print(t["project_key"], "asset type", t["issue_type_id"], "fields", sorted(t["field_ids"]), "request types", sorted(t["request_types"]))')"
@@ -76,9 +76,9 @@ PY
 echo "[jsm] the stub seeds instances the way requests would create them (one conforming, the rest defective)"
 out foundation contract > /tmp/spike-contract.json
 python3 "$ROOT/tests/stub/seed_estate.py" "$PORT" /tmp/spike-contract.json | sed 's/^/  /'
-run_stage conform
-out conform findings | python3 -c 'import json,sys; [print("  finding:", f) for f in json.load(sys.stdin)]'
-python3 - <<'PY' "$(out conform instances)" "$(out conform summary)"
+run_stage estate
+out estate findings | python3 -c 'import json,sys; [print("  finding:", f) for f in json.load(sys.stdin)]'
+python3 - <<'PY' "$(out estate instances)" "$(out estate summary)"
 import json, sys
 inst, summary = json.loads(sys.argv[1]), json.loads(sys.argv[2])
 A = "asset_record_present"   # every instance that did not go through the service lacks its Asset record
@@ -159,11 +159,11 @@ curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/anonymous_jira_closed" >/d
 apply_quiet foundation
 plan_expect_clean foundation "foundation restored"
 
-echo "[conform] a stale foundation evaluation must stop conform at plan time"
-if "$TF" -chdir="$ROOT/stages/conform" plan -no-color "${VARS[@]}" -var foundation_window_days=0 >/tmp/spike-plan.out 2>&1; then
-  echo "  FAIL: conform planned on a stale foundation"; exit 1
+echo "[estate] a stale foundation evaluation must stop estate at plan time"
+if "$TF" -chdir="$ROOT/stages/estate" plan -no-color "${VARS[@]}" -var foundation_window_days=0 >/tmp/spike-plan.out 2>&1; then
+  echo "  FAIL: estate planned on a stale foundation"; exit 1
 else
-  grep -q "older than 0 days" /tmp/spike-plan.out && echo "  conform refused: foundation evaluation older than the window"
+  grep -q "older than 0 days" /tmp/spike-plan.out && echo "  estate refused: foundation evaluation older than the window"
 fi
 
 echo "[policy] a requirement changed in YAML alone must change a verdict (no HCL touched)"
@@ -175,11 +175,11 @@ cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; rm -f /tmp/spike-f
 apply_quiet foundation
 cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml
 sedi 's/inactive_days: 90 /inactive_days: 100000 /' "$ROOT/policy/standards/restricted-collab-v1.yaml"
-apply_quiet conform
-echo "  standard inactive_days 90 -> 100000: LABOLD recently_active = $(out conform instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
+apply_quiet estate
+echo "  standard inactive_days 90 -> 100000: LABOLD recently_active = $(out estate instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
 cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; rm -f /tmp/spike-standard.yaml
-apply_quiet conform
-echo "  restored: LABOLD recently_active = $(out conform instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
+apply_quiet estate
+echo "  restored: LABOLD recently_active = $(out estate instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
 
 echo "[imports] a changed jsm/ file must invalidate its attestation until re-imported and re-recorded"
 cp "$ROOT/jsm/automation-rules.json" /tmp/spike-rules.json

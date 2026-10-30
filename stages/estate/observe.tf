@@ -1,4 +1,4 @@
-# Stage: conform, part 1. Reads every instance in the tenant. Nothing here is created; the
+# Stage: estate, part 1. Reads every instance in the tenant. Nothing here is created; the
 # engine holds no list of instances, it discovers them. One read per project for its scheme and
 # per (project, platform role) for the actors; one read per space for labels, role assignments,
 # permissions and latest page. Fine for a lab; paginate before an estate.

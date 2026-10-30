@@ -13,7 +13,7 @@ review:
   reviewer_must_not_be_admin: true
   plan_digest: sha256
 windows_days:
-  foundation: 7                       # conform needs a foundation evaluation newer than this
+  foundation: 7                       # estate needs a foundation evaluation newer than this
   attestation: 90
   authority: 365
   exception: 30
