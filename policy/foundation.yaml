@@ -109,13 +109,26 @@ controls:
     fact: verified_domains
     require: { op: superset_of, value_from: foundation.domains }
 
-  - id: org_policies_enabled
-    title: Data residency policy present and enabled
-    provision: runbook
-    mandatory: false
+  # Placement, two controls on one fact. The first catches a tenant that no longer matches what
+  # the environment declared; the second catches an environment using a realm it is not permitted.
+  # Only the first reads intent, so editing intent cannot satisfy the second.
+  - id: product_placement_matches_intent
+    title: Product residency realms match the declared tenant
+    provision: external
+    effective_from: 2026-10-30
+    mandatory: true
     depends: [jira, confluence]
-    fact: enabled_policy_types
-    require: { op: superset_of, value: [data-residency] }
+    fact: product_realms
+    require: { op: subset_of, value_from: foundation.approved_realms }
+
+  - id: product_placement_permitted
+    title: Product residency realms are permitted for this environment
+    provision: external
+    effective_from: 2026-10-30
+    mandatory: true
+    depends: [jira, confluence]
+    fact: product_realms
+    require: { op: subset_of, value_from: policy.permitted_realms }
 
   - id: confluence_audit_retention
     title: Confluence audit retention meets the minimum

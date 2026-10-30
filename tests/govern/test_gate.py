@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from govern import currency, gate, provenance
+from govern import cli, currency, gate, provenance
 
 ROOT = Path(__file__).resolve().parents[2]
 RULES = yaml.safe_load((ROOT / "policy" / "gate.yaml").read_text())
@@ -66,3 +66,13 @@ def test_policy_digests_cover_files_and_standards_directory(tmp_path):
 def test_plan_policy_versions_read_from_outputs():
     plan = {"planned_values": {"outputs": {"policy_version": {"value": "2026-10"}, "standard": {"value": {"id": "restricted-collab-v1"}}}}}
     assert provenance.plan_policy_versions(plan) == {"foundation_catalogue": "2026-10", "standard": "restricted-collab-v1"}
+
+
+def test_gate_creates_the_ledger_directory(tmp_path):
+    ledger = tmp_path / "ledger" / "lab.jsonl"
+    rc = cli.main(["gate", "--plan-json",
+                   str(ROOT / "tests" / "govern" / "fixtures" / "plan_foundation_blocked.json"),
+                   "--stage", "foundation", "--runtime", str(ROOT / "runtime" / "lab"),
+                   "--ledger", str(ledger)])
+    assert rc == 3                                  # the fixture blocks; the write must still happen
+    assert json.loads(ledger.read_text().splitlines()[-1])["stage"] == "foundation"

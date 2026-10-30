@@ -30,6 +30,7 @@ stages: [validate, plan, gate, apply, operate]
     - export TF_HTTP_LOCK_ADDRESS="$TF_HTTP_ADDRESS/lock" TF_HTTP_UNLOCK_ADDRESS="$TF_HTTP_ADDRESS/lock"
     - export TF_HTTP_LOCK_METHOD=POST TF_HTTP_UNLOCK_METHOD=DELETE TF_HTTP_RETRY_WAIT_MIN=5
     - export TF_HTTP_USERNAME=gitlab-ci-token TF_HTTP_PASSWORD="$CI_JOB_TOKEN"
+    - export TF_VAR_env="$ENV"           # policy keys its per-environment requirements on this
     # conform reads the foundation stage's template ids and evaluation date from its state
     - export TF_VAR_foundation_state="{\"address\":\"$CI_API_V4_URL/projects/$CI_PROJECT_ID/terraform/state/$ENV-foundation\",\"username\":\"gitlab-ci-token\",\"password\":\"$CI_JOB_TOKEN\"}"
     - terraform -chdir=stages/$STAGE init

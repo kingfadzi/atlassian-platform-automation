@@ -13,4 +13,5 @@ foundation = {
   domains               = ["lab.example", "lab.test"] # every TLD accounts sign in with; each must be verified
   product_access_groups = []                          # empty = report default access groups without judging them
   banner_contains       = "governed"
+  approved_realms       = ["global"] # what this site reports; the lab is permitted global in policy
 }

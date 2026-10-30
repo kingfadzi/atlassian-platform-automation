@@ -8,7 +8,7 @@
 #   scheme_browse_for_all_licensed   list     schemes granting BROWSE_PROJECTS to applicationRole
 #   latest_org_audit_event           string   RFC 3339 time of the newest organisation audit event
 #   verified_domains                 list     domain names on the organisation
-#   enabled_policy_types             list     org policy types with status enabled
+#   product_realms                   list     residency realms of the products on this site
 #   confluence_audit_retention_days  number   Confluence audit retention converted to days
 #   announcement_banner_text         string   banner message when enabled, else ""
 #   default_access_groups            list     default product-access groups across application roles
@@ -28,13 +28,14 @@ locals {
   http = {
     anon_jira = data.http.anonymous_jira, anon_conf = data.http.anonymous_confluence,
     schemes   = data.http.permission_schemes, events = data.http.org_events, roles = data.http.application_roles,
-    domains   = data.http.domains, policies = data.http.policies, retention = data.http.confluence_audit_retention,
+    domains   = data.http.domains, retention = data.http.confluence_audit_retention,
     banner    = data.http.announcement_banner, project_roles = data.http.project_roles, space_roles = data.http.space_roles,
     license   = data.http.jira_license, workspaces = data.http.workspaces,
   }
-  # Matched on the site URL prefix: the Confluence hostUrl is "<site>/wiki", so an endswith test
-  # on the bare host leaves this null and the seat-capacity fact silently unknown.
-  confluence_workspace = try(one([for w in local.json.workspaces.data : w if w.attributes.typeKey == "confluence" && startswith(try(w.attributes.hostUrl, ""), var.tenant.site_url)]), null)
+  # Matched on the site URL prefix: a product hostUrl carries its own path ("<site>/wiki"), and
+  # some workspaces report no hostUrl at all.
+  site_workspaces      = [for w in try(local.json.workspaces.data, []) : w if startswith(try(w.attributes.hostUrl, ""), var.tenant.site_url)]
+  confluence_workspace = try(one([for w in local.site_workspaces : w if w.attributes.typeKey == "confluence"]), null)
   role_name_by_id      = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
   admin_member_status  = { for g, d in data.http.admin_group_members : g => d.status_code }
   admin_members        = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
@@ -70,9 +71,9 @@ locals {
       known = local.status.domains == 200
       value = try([for d in local.json.domains.data : d.attributes.name], [])
     }
-    enabled_policy_types = {
-      known = local.status.policies == 200
-      value = try([for p in local.json.policies.data : p.attributes.type if p.attributes.status == "enabled"], [])
+    product_realms = {
+      known = local.status.workspaces == 200 && length(local.site_workspaces) > 0
+      value = distinct([for w in local.site_workspaces : try(w.attributes.realm, "unknown")])
     }
     confluence_audit_retention_days = {
       known = local.status.retention == 200
