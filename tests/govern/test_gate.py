@@ -39,10 +39,18 @@ def test_vanished_object_blocks_recreate():
     assert "investigate" in gate.evaluate(plan, RULES).blocked[0]
 
 
-def test_currency_windows():
-    records = {"attestations": {"records": [{"id": "custody", "kind": "attestation", "recorded": date(2026, 1, 1)}]}}
-    assert currency.currency_findings(records, RULES["windows_days"], today=date(2026, 10, 23))
-    assert not currency.currency_findings(records, RULES["windows_days"], today=date(2026, 1, 20))
+def test_currency_windows_are_applied_to_the_real_records_directory():
+    """Over the committed records, not a synthetic dict: the file name no longer has to match the
+    kind, and a dict keyed by hand is what let authority records go unchecked."""
+    records = currency.load_records(ROOT / "records" / "lab")
+    assert "authority" in records, "authority.yaml must be loaded for its window to apply"
+    assert currency.currency_findings(records, RULES["windows_days"], today=date(2028, 1, 1))
+    assert not currency.currency_findings(records, RULES["windows_days"], today=date(2026, 10, 23))
+
+
+def test_a_kind_with_no_window_never_expires():
+    records = {"imports": {"records": [{"id": "x", "kind": "import", "recorded": date(2020, 1, 1)}]}}
+    assert currency.currency_findings(records, RULES["windows_days"], today=date(2026, 10, 23)) == []
 
 
 def test_foundation_fixture_blocks_mandatory_and_reports_findings():

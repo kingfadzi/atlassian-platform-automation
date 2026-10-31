@@ -12,9 +12,8 @@ checks:
 review:
   reviewer_must_not_be_admin: true
   plan_digest: sha256
-windows_days:
+windows_days:                         # by record kind; a kind absent here never expires
   foundation: 7                       # estate needs a foundation evaluation newer than this
-  attestation: 90
   authority: 365
   exception: 30
 policy_files:                         # hashed into every ledger entry so decisions stay explainable
@@ -23,6 +22,7 @@ policy_files:                         # hashed into every ledger entry so decisi
   - policy/foundation.yaml
   - policy/intent_rules.yaml
   - policy/identities.yaml
+  - policy/unchecked.yaml
   - policy/conformance.yaml
   - policy/treatment.yaml
   - policy/standards                  # a directory: every standard file is hashed

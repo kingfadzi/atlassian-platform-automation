@@ -26,11 +26,18 @@ def expired(records: list[dict], days: int, today: date) -> list[str]:
 
 
 def currency_findings(records: dict, windows: dict, today: date | None = None) -> list[str]:
-    """Blocking findings for stale attestations, authority or exceptions."""
+    """Blocking findings for records past the window their kind declares. Each record names its own
+    kind, so a file is never located by guessing its name from a kind. A kind with no window is
+    skipped deliberately: nothing that does not decay needs one."""
     today = today or date.today()
     findings = []
-    for kind in ("attestation", "authority", "exception"):
-        entries = records.get(kind + "s", {}).get("records", [])
-        for name in expired(entries, windows[kind], today):
-            findings.append(f"{kind} {name} is older than {windows[kind]} days or undated")
+    for doc in records.values():
+        by_kind: dict[str, list[dict]] = {}
+        for record in (doc or {}).get("records", []) or []:
+            by_kind.setdefault(record.get("kind", "record"), []).append(record)
+        for kind, entries in sorted(by_kind.items()):
+            if kind not in windows:
+                continue
+            for name in expired(entries, windows[kind], today):
+                findings.append(f"{kind} {name} is older than {windows[kind]} days or undated")
     return findings
