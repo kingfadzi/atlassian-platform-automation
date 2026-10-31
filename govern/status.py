@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-OK = ("pass", "manually_confirmed", "not_applicable")
+OK = ("pass", "not_applicable")
 # Who has to act when a control is unsatisfied. The catalogue's `provision` says who creates the
 # thing; an unsatisfied control is owed by that same party.
 OWNER = {"engine": "engine", "runbook": "console", "external": "supplier or console"}
@@ -71,7 +71,7 @@ def instance_scoped(controls: list[dict]) -> bool:
 
 
 def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | None = None,
-           records: str = "records/lab", steps: list[dict] | None = None) -> str:
+           steps: list[dict] | None = None) -> str:
     """outputs maps a stage name to its terraform outputs; a phase with none has not run.
     `only` narrows the view to one phase. `steps` are shown beneath their phase but never judged."""
     steps = steps or []
@@ -93,10 +93,10 @@ def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | 
         unchecked = [s for s in steps if s.get("phase") == p["id"]]
         if instance_scoped(mine):
             if summary is None:
-                lines += _phase_header(p, "not run", mine, None, records)
+                lines += _phase_header(p, "not run", mine, None)
             else:
                 state = "findings" if summary.get("non_conforming") else "ok"
-                lines += _phase_header(p, state, mine, None, records)
+                lines += _phase_header(p, state, mine, None)
                 lines.append(f"{'':<21} {summary.get('projects', 0)} projects, {summary.get('spaces', 0)} spaces, "
                              f"{summary.get('non_conforming', 0)} non-conforming, {summary.get('unstamped', 0)} unstamped")
                 lines.append(f"{'':<21} {len(estate_findings)} findings across the estate")
@@ -106,7 +106,7 @@ def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | 
 
         seen = {k: v for k, v in verdicts.items() if k in {c["id"] for c in mine}}
         if mine:
-            lines += _phase_header(p, phase_state(mine, seen), mine, seen, records)
+            lines += _phase_header(p, phase_state(mine, seen), mine, seen)
         else:
             lines += [f"{p['id']:<11} {'—':<9} {p['title']}", f"{'':<21} covers: {p['covers']}",
                       f"{'':<21} nothing the engine judges here"]
@@ -127,13 +127,12 @@ def _unchecked(steps: list[dict]) -> list[str]:
     lines = [f"{'':<21} not checked by the engine:"]
     for s in steps:
         lines.append(f"{'':<21}   ( ) {s['id']}  {s['title']}")
-        lines += _instructions(s, "")
+        lines += _instructions(s)
         lines.append(f"{'':<21}     why:   {s['why']}")
     return lines
 
 
-def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None,
-                  records: str = "records/lab") -> list[str]:
+def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None) -> list[str]:
     by_id = {c['id']: c for c in mine}
     lines = [f"{p['id']:<11} {state:<9} {p['title']}",
              f"{'':<21} covers: {p['covers']}"]
@@ -141,15 +140,15 @@ def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None,
         lines.append(f"{'':<21} {_count(len(mine))}, none evaluated yet. acts: {p['acts']}")
         for cid, _, who in outstanding(mine, seen or {}):
             lines.append(f"{'':<21}   [ ] {cid}  ({who})")
-            lines += _instructions(by_id[cid], records)
+            lines += _instructions(by_id[cid])
         return lines
     if seen is None:
         return lines
     rows = outstanding(mine, seen)
     if rows:
         for cid, verdict, who in rows:
-            lines.append(f"{'':<21}   {verdict:<18} {cid}  owed by {who}")
-            lines += _instructions(by_id[cid], records)
+            lines.append(f"{'':<21}   {verdict:<14} {cid}  owed by {who}")
+            lines += _instructions(by_id[cid])
     elif all(seen.get(c["id"]) == "not_applicable" for c in mine):
         lines.append(f"{'':<21} {_count(len(mine))}, none applicable here")
     else:
@@ -161,13 +160,9 @@ def _count(n: int) -> str:
     return f"{n} control" if n == 1 else f"{n} controls"
 
 
-def _instructions(control: dict, records: str) -> list[str]:
-    """Where to go and what to do, from the control itself. A manually confirmed control also needs the
-    step recorded, so name the file."""
+def _instructions(control: dict) -> list[str]:
+    """Where to go and what to do, from the control or step itself."""
     if "where" not in control:
         return []
-    lines = [f"{'':<21}     where: {control['where']}",
-             f"{'':<21}     todo:  {control['todo']}"]
-    if control.get("fact") == "manual_confirmation":
-        lines.append(f"{'':<21}     then:  record it in {records}/manual_confirmations.yaml")
-    return lines
+    return [f"{'':<21}     where: {control['where']}",
+            f"{'':<21}     todo:  {control['todo']}"]

@@ -1,9 +1,0 @@
-# Console steps a named operator performed on the lab tenant, with the date and who did them.
-# Nothing here is observed: the engine only checks that a record exists, carries a control id, and
-# is dated inside the control's window. `recorded` is RFC 3339 so Terraform and the gate can apply
-# the window in policy; `by` is an account from identities.yaml beside this file.
-#
-# Empty because no console step has yet been performed on this tenant. The records that were here
-# named an account that does not exist and dates that precede the organisation, and two of them
-# named no control at all. An outstanding step is more useful than a false record of it.
-records: []

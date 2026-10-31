@@ -38,7 +38,7 @@ variable "foundation" {
 
 variable "records_dir" {
   type        = string
-  description = "Directory holding manual_confirmations.yaml, imports.yaml, authority.yaml and exceptions.yaml (outside Git in anything but the lab)."
+  description = "Directory holding identities.yaml, authority.yaml and exceptions.yaml (outside Git in anything but the lab)."
   default     = "../../records/lab"
 }
 

@@ -29,10 +29,6 @@ request_types:                        # portal entries; each creates an Asset is
   - { id: review,  name: Review an asset,   description: "Confirm an asset is still needed and correctly owned" }
   - { id: retire,  name: Retire an asset,   description: "Archive an asset that is no longer needed" }
 
-imports:                              # declared here, built or imported by hand, recorded with the file's sha256
-  - { id: asset_workflow,   file: jsm/asset-workflow.yaml,    how: "Build the Asset workflow in the console as the file describes" }
-  - { id: automation_rules, file: jsm/automation-rules.json,  how: "Project settings > Automation > Import rules" }
-
 field_types:                          # Jira custom field type and searcher keys per short type name
   textfield:  { type: com.atlassian.jira.plugin.system.customfieldtypes:textfield,  searcher: com.atlassian.jira.plugin.system.customfieldtypes:textsearcher }
   datepicker: { type: com.atlassian.jira.plugin.system.customfieldtypes:datepicker, searcher: com.atlassian.jira.plugin.system.customfieldtypes:daterange }

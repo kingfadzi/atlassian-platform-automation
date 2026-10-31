@@ -1,9 +1,9 @@
 # Generic control evaluation. Compares each control's fact with its requirement using one of
-# eight comparisons and derives per-product readiness. Contains no control id, threshold,
+# seven comparisons and derives per-product readiness. Contains no control id, threshold,
 # permission name or product rule: those are the catalogue (data) and the facts (observations).
 
 locals {
-  operators = ["equals", "empty", "at_least", "within_days", "manually_confirmed_within_days", "superset_of", "subset_of", "contains"]
+  operators = ["equals", "empty", "at_least", "within_days", "superset_of", "subset_of", "contains"]
   by_id     = { for c in var.catalogue.controls : c.id => c }
 
   # Required value: a literal, or looked up by path in the intent values supplied by the caller.
@@ -20,14 +20,13 @@ locals {
     c.require.op == "empty" ? (length(local.fact[id].value) == 0 ? "pass" : "fail") :
     c.require.op == "at_least" ? (local.fact[id].value >= local.required[id] ? "pass" : "fail") :
     c.require.op == "within_days" ? (local.fact[id].value != null && timecmp(local.fact[id].value, timeadd(var.now, "-${local.required[id] * 24}h")) >= 0 ? "pass" : "fail") :
-    c.require.op == "manually_confirmed_within_days" ? (can(local.fact[id].value[id]) && timecmp(timeadd(local.fact[id].value[id], "${local.required[id] * 24}h"), var.now) >= 0 ? "manually_confirmed" : "fail") :
     c.require.op == "superset_of" ? (length(setsubtract(local.required[id], local.fact[id].value)) == 0 ? "pass" : "fail") :
     c.require.op == "subset_of" ? (length(setsubtract(local.fact[id].value, local.required[id])) == 0 ? "pass" : "fail") :
     c.require.op == "contains" ? (strcontains(local.fact[id].value, local.required[id]) ? "pass" : "fail") :
     "unknown"
   ) }
 
-  ok_states = ["pass", "manually_confirmed", "not_applicable"]
+  ok_states = ["pass", "not_applicable"]
   blocking  = { for id, c in local.by_id : id => c.depends if c.mandatory && !contains(local.ok_states, local.verdict[id]) }
   findings  = { for id, c in local.by_id : id => local.verdict[id] if !c.mandatory && !contains(local.ok_states, local.verdict[id]) }
   ready     = { for product in var.products : product => length([for id, dep in local.blocking : id if contains(dep, product)]) == 0 }

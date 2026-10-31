@@ -63,7 +63,6 @@ def cmd_status(args: argparse.Namespace) -> int:
         status.load_controls([ROOT / "policy" / "foundation.yaml", ROOT / "policy" / "conformance.yaml"]),
         outputs,
         args.phase,
-        args.records,
         status.load_steps(ROOT / "policy" / "unchecked.yaml"),
     ))
     return 0
@@ -88,8 +87,6 @@ def main(argv: list[str] | None = None) -> int:
     v.set_defaults(func=cmd_verify)
     s = sub.add_parser("status")
     s.add_argument("--phase", help="narrow the view to one phase")
-    s.add_argument("--records", default="records/lab",
-                   help="where attestations are recorded; named in the view when one is owed")
     s.add_argument("--outputs", action="append", metavar="PHASE=FILE",
                    help="a stage's `terraform output -json`; omit for a checklist from policy alone")
     s.set_defaults(func=cmd_status)

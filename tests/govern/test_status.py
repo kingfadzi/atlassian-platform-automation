@@ -51,8 +51,8 @@ def test_verdicts_name_who_owes_an_unsatisfied_control():
     verdicts["anonymous_jira_closed"] = "fail"          # provision: runbook
     verdicts["roles_match_standards"] = "fail"          # provision: engine
     text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts, ready={"jira": False})))
-    assert "fail               anonymous_jira_closed  owed by console" in text
-    assert "fail               roles_match_standards  owed by engine" in text
+    assert "fail           anonymous_jira_closed  owed by console" in text
+    assert "fail           roles_match_standards  owed by engine" in text
     assert "jira=blocked" in text
 
 
@@ -118,13 +118,10 @@ def test_an_outstanding_console_control_prints_its_instructions():
     assert "todo:  Remove the reported account" in text
 
 
-def test_only_manually_confirmed_controls_name_the_record_file():
-    observed = next(c for c in CONTROLS
-                    if c.get("provision") == "runbook" and c.get("fact") != "manual_confirmation")
-    verdicts = {c["id"]: "pass" for c in CONTROLS}
-    verdicts[observed["id"]] = "fail"
-    text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)))
-    assert observed["id"] in text
+def test_nothing_in_the_view_asks_for_a_record_to_be_written():
+    """No control is satisfied by a record any more; every one is read from the tenant."""
+    verdicts = {c["id"]: "fail" for c in CONTROLS}
+    text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)), steps=STEPS)
     assert "record it in" not in text
 
 
@@ -143,7 +140,7 @@ def test_a_step_is_never_given_a_verdict():
     verdicts = {c["id"]: "pass" for c in CONTROLS} | {s["id"]: "fail" for s in STEPS}
     text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)), steps=STEPS)
     for s in STEPS:
-        assert f"fail               {s['id']}" not in text
+        assert f"fail           {s['id']}" not in text
 
 
 def test_a_phase_with_nothing_to_judge_says_so_rather_than_not_run():

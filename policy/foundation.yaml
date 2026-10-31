@@ -4,12 +4,11 @@
 # stages/foundation/facts.tf) and a REQUIREMENT placed on it. Change requirements here; HCL only
 # changes when a genuinely new fact is needed.
 #
-# require.op is one of eight comparisons and the set is a ceiling, not a starting point:
+# require.op is one of seven comparisons and the set is a ceiling, not a starting point:
 #   equals                         fact.value == value
 #   empty                          length(fact.value) == 0
 #   at_least                       fact.value >= value
 #   within_days                    fact.value is a timestamp newer than now - value days
-#   manually_confirmed_within_days a manual confirmation carrying this control's id, recorded within value days
 #   superset_of                    every element of value is in fact.value
 #   subset_of                      every element of fact.value is in value
 #   contains                       fact.value (string) contains value
@@ -18,7 +17,7 @@
 #
 # provision says who makes the setting true (docs/runbook-foundation.md lists the runbook steps):
 #   engine    the foundation stage provisions it from policy (stages/foundation/provision.tf)
-#   runbook   admin console only; a named operator does it once and records a manual confirmation
+#   runbook   admin console only; a named operator does it once and the engine reads it back
 #   external  owned by another system (identity provider, AD, ServiceNow); verified only
 #
 # mandatory: true blocks the dependent products until satisfied; false is reported only.

@@ -14,7 +14,6 @@
 #   confluence_audit_retention_days  number   Confluence audit retention converted to days
 #   announcement_banner_text         string   banner message when enabled, else ""
 #   default_access_groups            list     default product-access groups across application roles
-#   manual_confirmation              map      control id => recorded (RFC 3339), from records_dir
 #   jira_project_roles               list     site-wide project role names
 #   permission_scheme_names          list     permission scheme names on the site
 #   scheme_grants                    list     "scheme name|PERMISSION|role name" for every grant to a project role
@@ -26,7 +25,7 @@
 #   jira_paid_application_count      number   Jira applications on a PAID plan
 #   confluence_seat_capacity         number   seat capacity of the Confluence workspace (admin API); Confluence has no plan API
 #   (treatment.tf)  service_project_keys, issue_type_names, custom_field_names, treatment_request_types,
-#                   asset_workflow_gaps (declared statuses and transitions Jira does not report), import_current_<id>
+#                   asset_workflow_gaps (declared statuses and transitions Jira does not report)
 
 locals {
   http = {
@@ -55,10 +54,8 @@ locals {
   status      = { for k, d in local.http : k => d.status_code }
   json        = { for k, d in local.http : k => try(jsondecode(d.response_body), {}) }
 
-  schemes              = try(local.json.schemes.permissionSchemes, [])
-  retention_unit       = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
-  manual_confirmations = try(yamldecode(file("${var.records_dir}/manual_confirmations.yaml")).records, [])
-  import_records       = try(yamldecode(file("${var.records_dir}/imports.yaml")).records, [])
+  schemes        = try(local.json.schemes.permissionSchemes, [])
+  retention_unit = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
 
   tenant_facts = {
     anonymous_jira_projects = {
@@ -110,10 +107,6 @@ locals {
     default_access_groups = {
       known = local.status.roles == 200
       value = try(flatten([for r in local.json.roles : r.defaultGroups]), [])
-    }
-    manual_confirmation = {
-      known = true
-      value = { for r in local.manual_confirmations : r.id => r.recorded if r.kind == "manual_confirmation" }
     }
     jira_project_roles = {
       known = local.status.project_roles == 200

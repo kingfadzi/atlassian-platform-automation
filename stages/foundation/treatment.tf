@@ -1,6 +1,6 @@
 # Stage: foundation, part 0b. The asset-treatment service (policy/treatment.yaml): the JSM project
 # users onboard assets through, its Asset issue type and fields, and its request types. What has
-# no write API (workflow) is declared in jsm/ and compared against what Jira reports. Everything
+# no write API (the workflow) is declared in jsm/ and compared with what Jira reports. Everything
 # is read back and judged by controls with depends: [treatment].
 
 locals {
@@ -92,8 +92,6 @@ data "http" "request_types" {
 }
 
 locals {
-  import_by_id = { for r in local.import_records : r.id => r if r.kind == "import" }
-
   # Declared workflow against the one Jira reports. Transitions compare as "<from>|<name>|<to>";
   # the live side carries status ids, so resolve them through the workflow's own status list, and
   # `from` is a list where `to` is single.
@@ -106,37 +104,31 @@ locals {
     "${lookup(local.live_status_name, tostring(f), "?")}|${t.name}|${lookup(local.live_status_name, tostring(t.to), "?")}"
   ]])
   declared_transitions = [for t in local.asset_workflow.transitions : "${t.from}|${t.name}|${t.to}"]
-  treatment_facts = merge(
-    {
-      service_project_keys = {
-        known = data.http.projects.status_code == 200
-        value = [for p in try(jsondecode(data.http.projects.response_body).values, []) : p.key if try(p.projectTypeKey, "") == "service_desk"]
-      }
-      issue_type_names = {
-        known = data.http.issue_types.status_code == 200
-        value = [for t in try(jsondecode(data.http.issue_types.response_body), []) : t.name]
-      }
-      custom_field_names = {
-        known = data.http.fields.status_code == 200
-        value = [for f in try(jsondecode(data.http.fields.response_body), []) : f.name if try(f.custom, false)]
-      }
-      treatment_request_types = {
-        known = data.http.request_types.status_code == 200
-        value = [for r in try(jsondecode(data.http.request_types.response_body).values, []) : r.name]
-      }
-      asset_workflow_gaps = {
-        known = data.http.workflows.status_code == 200
-        value = concat(
-          [for s in setsubtract([for s in local.asset_workflow.statuses : s.name], values(local.live_status_name)) : "status:${s}"],
-          [for t in setsubtract(local.declared_transitions, local.live_transitions) : "transition:${t}"],
-        )
-      }
-    },
-    { for i in local.treatment.imports : "import_current_${i.id}" => {
-      known = true
-      value = try(local.import_by_id[i.id].sha256, "") == filesha256("${path.module}/../../${i.file}")
-    } },
-  )
+  treatment_facts = {
+    service_project_keys = {
+      known = data.http.projects.status_code == 200
+      value = [for p in try(jsondecode(data.http.projects.response_body).values, []) : p.key if try(p.projectTypeKey, "") == "service_desk"]
+    }
+    issue_type_names = {
+      known = data.http.issue_types.status_code == 200
+      value = [for t in try(jsondecode(data.http.issue_types.response_body), []) : t.name]
+    }
+    custom_field_names = {
+      known = data.http.fields.status_code == 200
+      value = [for f in try(jsondecode(data.http.fields.response_body), []) : f.name if try(f.custom, false)]
+    }
+    treatment_request_types = {
+      known = data.http.request_types.status_code == 200
+      value = [for r in try(jsondecode(data.http.request_types.response_body).values, []) : r.name]
+    }
+    asset_workflow_gaps = {
+      known = data.http.workflows.status_code == 200
+      value = concat(
+        [for s in setsubtract([for s in local.asset_workflow.statuses : s.name], values(local.live_status_name)) : "status:${s}"],
+        [for t in setsubtract(local.declared_transitions, local.live_transitions) : "transition:${t}"],
+      )
+    }
+  }
   treatment_intent = {
     "policy.treatment_project_keys" = [local.treatment.project.key]
     "policy.asset_issue_type"       = [local.treatment.asset.issue_type]
@@ -148,6 +140,5 @@ locals {
     issue_type_id = module.asset_type.id
     field_ids     = { for id, m in module.asset_field : id => m.id }
     request_types = { for id, m in module.request_type : id => m.id }
-    imports       = { for i in local.treatment.imports : i.id => filesha256("${path.module}/../../${i.file}") }
   }
 }

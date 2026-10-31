@@ -1,8 +1,0 @@
-# TEST FIXTURE for the stub tenant only: every console step the spike needs confirmed is recorded
-# here so the full path is exercised. The lab's real records live in records/lab and are not
-# copied from here. Import records are runtime-hashed, so the spike writes imports.yaml itself.
-records:
-  - { id: public_links_off,                kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: USER-LAB-ADMIN }
-  - { id: self_signup_off,                 kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: USER-LAB-ADMIN }
-  - { id: native_project_creation_closed,  kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: USER-LAB-ADMIN }
-  - { id: native_space_creation_closed,    kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: USER-LAB-ADMIN }
