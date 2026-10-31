@@ -33,7 +33,7 @@ module "evaluation" {
 
 locals {
   rung    = { for c in local.policy.controls : c.id => c.action }
-  failing = { for id, m in module.evaluation : id => [for cid, v in m.verdict : cid if !contains(["pass", "attested", "not_applicable"], v)] }
+  failing = { for id, m in module.evaluation : id => [for cid, v in m.verdict : cid if !contains(["pass", "manually_confirmed", "not_applicable"], v)] }
   verdicts = { for id, i in local.instances : id => {
     kind     = i.kind
     key      = i.key

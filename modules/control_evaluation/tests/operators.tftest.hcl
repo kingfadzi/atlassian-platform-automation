@@ -5,15 +5,15 @@ variables {
   now    = "2026-10-24T12:00:00Z"
   intent = { "foundation.domains" = ["lab.example"], "foundation.none" = [], "standard.days" = 7 }
   facts = {
-    count_zero  = { known = true, value = 0 }
-    count_two   = { known = true, value = 2 }
-    empty_list  = { known = true, value = [] }
-    some_list   = { known = true, value = ["a", "b"] }
-    fresh_time  = { known = true, value = "2026-10-23T12:00:00Z" }
-    stale_time  = { known = true, value = "2026-01-01T00:00:00Z" }
-    text        = { known = true, value = "Lab tenant: governed estate" }
-    unreadable  = { known = false, value = null }
-    attestation = { known = true, value = { fresh = "2026-10-01T00:00:00Z", old = "2025-01-01T00:00:00Z" } }
+    count_zero          = { known = true, value = 0 }
+    count_two           = { known = true, value = 2 }
+    empty_list          = { known = true, value = [] }
+    some_list           = { known = true, value = ["a", "b"] }
+    fresh_time          = { known = true, value = "2026-10-23T12:00:00Z" }
+    stale_time          = { known = true, value = "2026-01-01T00:00:00Z" }
+    text                = { known = true, value = "Lab tenant: governed estate" }
+    unreadable          = { known = false, value = null }
+    manual_confirmation = { known = true, value = { fresh = "2026-10-01T00:00:00Z", old = "2025-01-01T00:00:00Z" } }
   }
   catalogue = {
     version = "test"
@@ -25,8 +25,8 @@ variables {
       { id = "at_least_pass", mandatory = false, depends = ["jira"], fact = "count_two", require = { op = "at_least", value = 2 } },
       { id = "within_pass", mandatory = true, depends = ["jira", "confluence"], fact = "fresh_time", require = { op = "within_days", value = 7 } },
       { id = "within_fail", mandatory = false, depends = ["jira"], fact = "stale_time", require = { op = "within_days", value = 7 } },
-      { id = "fresh", mandatory = true, depends = ["confluence"], fact = "attestation", require = { op = "attested_within_days", value = 90 } },
-      { id = "old", mandatory = false, depends = ["confluence"], fact = "attestation", require = { op = "attested_within_days", value = 90 } },
+      { id = "fresh", mandatory = true, depends = ["confluence"], fact = "manual_confirmation", require = { op = "manually_confirmed_within_days", value = 90 } },
+      { id = "old", mandatory = false, depends = ["confluence"], fact = "manual_confirmation", require = { op = "manually_confirmed_within_days", value = 90 } },
       { id = "superset_pass", mandatory = false, depends = ["jira"], fact = "some_list", require = { op = "superset_of", value = ["a"] } },
       { id = "subset_fail", mandatory = false, depends = ["jira"], fact = "some_list", require = { op = "subset_of", value = ["a"] } },
       { id = "contains_pass", mandatory = false, depends = ["jira"], fact = "text", require = { op = "contains", value = "governed" } },
@@ -45,7 +45,7 @@ run "verdicts" {
   assert {
     condition = output.verdict == {
       eq_pass       = "pass", eq_fail = "fail", empty_pass = "pass", empty_fail = "fail", at_least_pass = "pass",
-      within_pass   = "pass", within_fail = "fail", fresh = "attested", old = "fail",
+      within_pass   = "pass", within_fail = "fail", fresh = "manually_confirmed", old = "fail",
       superset_pass = "pass", subset_fail = "fail", contains_pass = "pass",
       from_intent   = "fail", from_empty_intent = "not_applicable", from_number_intent = "fail", from_missing_intent = "not_applicable",
       unknown_fact  = "unknown", na = "not_applicable",

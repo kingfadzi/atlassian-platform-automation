@@ -5,20 +5,20 @@
 # changes when a genuinely new fact is needed.
 #
 # require.op is one of eight comparisons and the set is a ceiling, not a starting point:
-#   equals               fact.value == value
-#   empty                length(fact.value) == 0
-#   at_least             fact.value >= value
-#   within_days          fact.value is a timestamp newer than now - value days
-#   attested_within_days attestation record with this control's id, recorded within value days
-#   superset_of          every element of value is in fact.value
-#   subset_of            every element of fact.value is in value
-#   contains             fact.value (string) contains value
+#   equals                         fact.value == value
+#   empty                          length(fact.value) == 0
+#   at_least                       fact.value >= value
+#   within_days                    fact.value is a timestamp newer than now - value days
+#   manually_confirmed_within_days a manual confirmation carrying this control's id, recorded within value days
+#   superset_of                    every element of value is in fact.value
+#   subset_of                      every element of fact.value is in value
+#   contains                       fact.value (string) contains value
 # value_from names a path in the intent's `foundation` object instead of a literal value; when it
 # resolves to an empty list the control is not_applicable (the intent has nothing to require).
 #
 # provision says who makes the setting true (docs/runbook-foundation.md lists the runbook steps):
 #   engine    the foundation stage provisions it from policy (stages/foundation/provision.tf)
-#   runbook   admin console only; a named operator does it once and records an attestation
+#   runbook   admin console only; a named operator does it once and records a manual confirmation
 #   external  owned by another system (identity provider, AD, ServiceNow); verified only
 #
 # mandatory: true blocks the dependent products until satisfied; false is reported only.
@@ -87,11 +87,11 @@ controls:
     effective_from: 2026-10-20
     provision: runbook
     where: "Confluence > Settings > Further configuration, and admin.atlassian.com > Security"
-    todo: "Turn off public links and anonymous external sharing, then attest: this setting has no read API."
+    todo: "Turn off public links and anonymous external sharing, then record the manual confirmation: this setting has no read API."
     mandatory: true
     depends: [confluence]
-    fact: attestation
-    require: { op: attested_within_days, value: 90 }
+    fact: manual_confirmation
+    require: { op: manually_confirmed_within_days, value: 90 }
 
   # Reported only in the lab
   - id: no_sitewide_browse_grants
@@ -206,11 +206,11 @@ controls:
     title: Evidence retrieval from the ledger destination
     provision: runbook
     where: "the evidence destination, once one is chosen"
-    todo: "Confirm a ledger entry can be retrieved by someone outside the platform team, then attest."
+    todo: "Confirm a ledger entry can be retrieved by someone outside the platform team, then record the manual confirmation."
     mandatory: false
     depends: [jira, confluence]
-    fact: attestation
-    require: { op: attested_within_days, value: 90 }
+    fact: manual_confirmation
+    require: { op: manually_confirmed_within_days, value: 90 }
     lab: not_applicable      # no evidence destination chosen yet
 
   - id: self_signup_off
@@ -218,11 +218,11 @@ controls:
     title: Self-signup and approved-domain signup off
     provision: runbook
     where: "admin.atlassian.com > Settings > User management"
-    todo: "Turn off self-signup and approved-domain signup so accounts arrive only through the identity provider, then attest."
+    todo: "Turn off self-signup and approved-domain signup so accounts arrive only through the identity provider, then record the manual confirmation."
     mandatory: false
     depends: [jira, confluence]
-    fact: attestation
-    require: { op: attested_within_days, value: 90 }
+    fact: manual_confirmation
+    require: { op: manually_confirmed_within_days, value: 90 }
 
   - id: authentication_policy
     phase: identity
@@ -230,8 +230,8 @@ controls:
     provision: external
     mandatory: false
     depends: [jira, confluence]
-    fact: attestation
-    require: { op: attested_within_days, value: 90 }
+    fact: manual_confirmation
+    require: { op: manually_confirmed_within_days, value: 90 }
     lab: not_applicable      # Atlassian Guard, outside the lab plan
 
   - id: alert_routing_tested
@@ -239,16 +239,16 @@ controls:
     title: Alert routing to responders tested
     provision: runbook
     where: "the alerting destination and its on-call route"
-    todo: "Send a test alert and confirm a responder receives it, then attest: there is no API for this."
+    todo: "Send a test alert and confirm a responder receives it, then record the manual confirmation: there is no API for this."
     mandatory: false
     depends: [jira, confluence]
-    fact: attestation
-    require: { op: attested_within_days, value: 90 }
+    fact: manual_confirmation
+    require: { op: manually_confirmed_within_days, value: 90 }
     lab: not_applicable      # no SIEM in the lab
 
   # Entitlement (reported): which controls the plan can carry. Several runbook steps (restricting
   # space creation, granular permissions, IP allowlists, audit retention) need a paid plan. A
-  # failing entitlement control explains why a runbook step cannot be completed; never attest a
+  # failing entitlement control explains why a runbook step cannot be completed; never confirm a
   # step the plan does not allow. Flip to mandatory for a firm tenant.
   - id: jira_plan_paid
     phase: tenancy
@@ -316,11 +316,11 @@ controls:
     register: [SSCF-ACC-03]
     provision: runbook
     where: "Jira > Settings > System > Global permissions"
-    todo: "Remove every group from Create team-managed projects so only Jira administrators can create projects, then attest: global permission holders have no read API."
+    todo: "Remove every group from Create team-managed projects so only Jira administrators can create projects, then record the manual confirmation: global permission holders have no read API."
     mandatory: true
     depends: [jira]
-    fact: attestation
-    require: { op: attested_within_days, value: 90 }
+    fact: manual_confirmation
+    require: { op: manually_confirmed_within_days, value: 90 }
 
   - id: native_space_creation_closed
     phase: guardrails
@@ -328,11 +328,11 @@ controls:
     register: [SSCF-ACC-03]
     provision: runbook
     where: "Confluence > Settings > Global permissions"
-    todo: "Grant Create space to the engine's group only and remove it from confluence-users and any other group, then attest."
+    todo: "Grant Create space to the engine's group only and remove it from confluence-users and any other group, then record the manual confirmation."
     mandatory: true
     depends: [confluence]
-    fact: attestation
-    require: { op: attested_within_days, value: 90 }
+    fact: manual_confirmation
+    require: { op: manually_confirmed_within_days, value: 90 }
 
   # Exceptional identities (Cloud Foundation B).
   - id: admins_are_listed

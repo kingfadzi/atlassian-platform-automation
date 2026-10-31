@@ -12,10 +12,10 @@ export TF_IN_AUTOMATION=1 TF_INPUT=0
 export TF_VAR_atlassian_org_api_key=stub TF_VAR_atlassian_email=admin@lab TF_VAR_atlassian_api_token=stub
 export TF_VAR_admin_api_url="http://127.0.0.1:$PORT/admin"
 export TF_VAR_env=lab
-# records fixture: the committed records plus import attestations carrying the current jsm/ file hashes
+# records fixture: the committed records plus import records carrying the current jsm/ file hashes
 rm -rf /tmp/spike-records && cp -r "$ROOT/tests/stub/records" /tmp/spike-records
 for f in asset_workflow:jsm/asset-workflow.yaml automation_rules:jsm/automation-rules.json; do
-  printf '  - { id: %s, kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB, sha256: "%s" }\n' "${f%%:*}" "$(sha256sum "$ROOT/${f#*:}" | cut -d' ' -f1)" >> /tmp/spike-records/attestations.yaml
+  printf '  - { id: %s, kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: STUB, sha256: "%s" }\n' "${f%%:*}" "$(sha256sum "$ROOT/${f#*:}" | cut -d' ' -f1)" >> /tmp/spike-records/attestations.yaml
 done
 VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "records_dir=/tmp/spike-records" -var "dns_resolvers=[\"http://127.0.0.1:$PORT/dns/resolve\"]")
 STAGES=(tenancy foundation estate)
@@ -181,7 +181,7 @@ cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; 
 apply_quiet estate
 echo "  restored: LABOLD recently_active = $(out estate instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
 
-echo "[imports] a changed jsm/ file must invalidate its attestation until re-imported and re-recorded"
+echo "[imports] a changed jsm/ file must invalidate its record until re-imported and re-recorded"
 cp "$ROOT/jsm/automation-rules.json" /tmp/spike-rules.json
 python3 - "$ROOT/jsm/automation-rules.json" <<'PY'
 import json, sys

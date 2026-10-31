@@ -1,6 +1,6 @@
 # Stage: foundation, part 0b. The asset-treatment service (policy/treatment.yaml): the JSM project
 # users onboard assets through, its Asset issue type and fields, and its request types. What has
-# no write API (workflow, automation) is declared in jsm/ and attested by file hash. Everything
+# no write API (workflow, automation) is declared in jsm/ and bound to its file hash. Everything
 # is read back and judged by controls with depends: [treatment].
 
 locals {
@@ -87,7 +87,7 @@ data "http" "request_types" {
 }
 
 locals {
-  import_records = { for r in local.attestations : r.id => r if r.kind == "attestation" && can(r.sha256) }
+  import_records = { for r in local.manual_confirmations : r.id => r if r.kind == "manual_confirmation" && can(r.sha256) }
   treatment_facts = merge(
     {
       service_project_keys = {

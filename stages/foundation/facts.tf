@@ -14,7 +14,7 @@
 #   confluence_audit_retention_days  number   Confluence audit retention converted to days
 #   announcement_banner_text         string   banner message when enabled, else ""
 #   default_access_groups            list     default product-access groups across application roles
-#   attestation                      map      attestation id => recorded (RFC 3339), from records_dir
+#   manual_confirmation              map      control id => recorded (RFC 3339), from records_dir
 #   jira_project_roles               list     site-wide project role names
 #   permission_scheme_names          list     permission scheme names on the site
 #   scheme_grants                    list     "scheme name|PERMISSION|role name" for every grant to a project role
@@ -51,9 +51,9 @@ locals {
   status      = { for k, d in local.http : k => d.status_code }
   json        = { for k, d in local.http : k => try(jsondecode(d.response_body), {}) }
 
-  schemes        = try(local.json.schemes.permissionSchemes, [])
-  retention_unit = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
-  attestations   = try(yamldecode(file("${var.records_dir}/attestations.yaml")).records, [])
+  schemes              = try(local.json.schemes.permissionSchemes, [])
+  retention_unit       = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
+  manual_confirmations = try(yamldecode(file("${var.records_dir}/attestations.yaml")).records, [])
 
   tenant_facts = {
     anonymous_jira_projects = {
@@ -106,9 +106,9 @@ locals {
       known = local.status.roles == 200
       value = try(flatten([for r in local.json.roles : r.defaultGroups]), [])
     }
-    attestation = {
+    manual_confirmation = {
       known = true
-      value = { for r in local.attestations : r.id => r.recorded if r.kind == "attestation" }
+      value = { for r in local.manual_confirmations : r.id => r.recorded if r.kind == "manual_confirmation" }
     }
     jira_project_roles = {
       known = local.status.project_roles == 200

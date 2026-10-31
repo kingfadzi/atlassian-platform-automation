@@ -1,9 +1,9 @@
 # TEST FIXTURE for the stub tenant only: every attested control is recorded so the spike can
 # exercise the full path. The lab's real records live in runtime/lab and are not copied from here.
 records:
-  - { id: custody,                         kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB }
-  - { id: auth_policy,                     kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB }
-  - { id: public_links_off,                kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB }
-  - { id: self_signup_off,                 kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB }
-  - { id: native_project_creation_closed,  kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB }
-  - { id: native_space_creation_closed,    kind: attestation, recorded: 2026-10-20T00:00:00Z, by: STUB }
+  - { id: custody,                         kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: STUB }
+  - { id: auth_policy,                     kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: STUB }
+  - { id: public_links_off,                kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: STUB }
+  - { id: self_signup_off,                 kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: STUB }
+  - { id: native_project_creation_closed,  kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: STUB }
+  - { id: native_space_creation_closed,    kind: manual_confirmation, recorded: 2026-10-20T00:00:00Z, by: STUB }

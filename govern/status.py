@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-OK = ("pass", "attested", "not_applicable")
+OK = ("pass", "manually_confirmed", "not_applicable")
 # Who has to act when a control is unsatisfied. The catalogue's `provision` says who creates the
 # thing; an unsatisfied control is owed by that same party.
 OWNER = {"engine": "engine", "runbook": "console", "external": "supplier or console"}
@@ -122,7 +122,7 @@ def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None,
     rows = outstanding(mine, seen)
     if rows:
         for cid, verdict, who in rows:
-            lines.append(f"{'':<21}   {verdict:<14} {cid}  owed by {who}")
+            lines.append(f"{'':<21}   {verdict:<18} {cid}  owed by {who}")
             lines += _instructions(by_id[cid], records)
     elif all(seen.get(c["id"]) == "not_applicable" for c in mine):
         lines.append(f"{'':<21} {_count(len(mine))}, none applicable here")
@@ -136,12 +136,12 @@ def _count(n: int) -> str:
 
 
 def _instructions(control: dict, records: str) -> list[str]:
-    """Where to go and what to do, from the control itself. An attested control also needs the
+    """Where to go and what to do, from the control itself. A manually confirmed control also needs the
     step recorded, so name the file."""
     if "where" not in control:
         return []
     lines = [f"{'':<21}     where: {control['where']}",
              f"{'':<21}     todo:  {control['todo']}"]
-    if control.get("fact") == "attestation":
+    if control.get("fact") == "manual_confirmation":
         lines.append(f"{'':<21}     then:  record it in {records}/attestations.yaml")
     return lines

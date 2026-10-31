@@ -37,8 +37,8 @@ def test_verdicts_name_who_owes_an_unsatisfied_control():
     verdicts["anonymous_jira_closed"] = "fail"          # provision: runbook
     verdicts["roles_match_standards"] = "fail"          # provision: engine
     text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts, ready={"jira": False})))
-    assert "fail           anonymous_jira_closed  owed by console" in text
-    assert "fail           roles_match_standards  owed by engine" in text
+    assert "fail               anonymous_jira_closed  owed by console" in text
+    assert "fail               roles_match_standards  owed by engine" in text
     assert "jira=blocked" in text
 
 
@@ -106,9 +106,9 @@ def test_an_outstanding_console_control_prints_its_instructions():
     assert "then:  record it in records/lab/attestations.yaml" in text
 
 
-def test_only_attested_controls_name_the_record_file():
+def test_only_manually_confirmed_controls_name_the_record_file():
     observed = next(c for c in CONTROLS
-                    if c.get("provision") == "runbook" and c.get("fact") != "attestation")
+                    if c.get("provision") == "runbook" and c.get("fact") != "manual_confirmation")
     verdicts = {c["id"]: "pass" for c in CONTROLS}
     verdicts[observed["id"]] = "fail"
     text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)))
