@@ -77,6 +77,17 @@ data "http" "admin_group_members" {
   request_headers = local.site_auth
 }
 
+# What global permissions each declared account actually holds. Asked as admin, per account: the
+# bulk check honours accountId, so no probe identity is needed. The loop is over the declared
+# accounts, which are known at plan time.
+data "http" "account_permissions" {
+  for_each        = toset([for a in local.accounts : a.id])
+  url             = "${var.tenant.site_url}/rest/api/3/permissions/check"
+  method          = "POST"
+  request_body    = jsonencode({ accountId = each.value, globalPermissions = local.rules.watched_global_permissions })
+  request_headers = merge(local.site_auth, { "Content-Type" = "application/json" })
+}
+
 data "http" "jira_license" {
   url             = "${var.tenant.site_url}/rest/api/3/instance/license"
   request_headers = local.site_auth

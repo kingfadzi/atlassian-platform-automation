@@ -1,24 +1,15 @@
-# Exceptional identities (Cloud Foundation B): accounts that hold organisation or site
-# administration, run automation, or exist for emergency access. Anything with admin power that
-# is not listed here is a finding. `reviewed` is RFC 3339; the review window is in foundation.yaml.
+# What each kind of exceptional identity may hold (Cloud Foundation B). The accounts themselves
+# are per-tenant and live in records/<env>/identities.yaml; this file says only which groups the
+# foundation reads to find admins, and what a given kind of account is allowed to do.
 version: 2026-10
 owner: PLATFORM-GOV
 
 admin_groups: [org-admins]                  # group memberships the foundation reads to find admins; a group that does not exist on the site leaves admins_are_listed unknown (fix the list, do not guess)
 
-accounts:
-  - id: USER-LAB-ADMIN
-    kind: human_admin
-    owner: PLATFORM-GOV
-    scope: organisation and site administration (lab)
-    reviewed: 2026-10-20T00:00:00Z
-  - id: USER-LAB-ENGINE
-    kind: engine
-    owner: PLATFORM-GOV
-    scope: pipeline principal; scoped tokens per stage; no interactive login
-    reviewed: 2026-10-20T00:00:00Z
-  - id: USER-LAB-BREAKGLASS
-    kind: emergency
-    owner: PLATFORM-GOV
-    scope: sealed credentials; use raises a finding
-    reviewed: 2026-10-20T00:00:00Z
+# Global permissions an account of each kind may hold. The engine asks Jira what each declared
+# account actually holds and reports anything outside its kind's list. SYSTEM_ADMIN is allowed to
+# no kind: nothing the platform runs needs it.
+kinds:
+  human_admin: [ADMINISTER, CREATE_PROJECT, CREATE_SHARED_OBJECTS, BULK_CHANGE, USER_PICKER]
+  engine:      [ADMINISTER, CREATE_PROJECT]
+  emergency:   [ADMINISTER, CREATE_PROJECT, CREATE_SHARED_OBJECTS, BULK_CHANGE, USER_PICKER]

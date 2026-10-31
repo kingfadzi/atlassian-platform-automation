@@ -20,7 +20,8 @@
 #   scheme_grants                    list     "scheme name|PERMISSION|role name" for every grant to a project role
 #   confluence_space_roles           list     space role names available on the site
 #   site_admin_accounts              list     account ids in the admin groups named in policy/identities.yaml
-#   exceptional_identities_last_review string RFC 3339 of the oldest review in policy/identities.yaml
+#   accounts_holding_disallowed_permissions list "<account>|<permission>" a declared account holds but its kind forbids
+#   exceptional_identities_last_review string RFC 3339 of the oldest review in records_dir/identities.yaml
 #   jira_application_plans           map      Jira application id => UNLICENSED | FREE | PAID (instance license)
 #   jira_paid_application_count      number   Jira applications on a PAID plan
 #   confluence_seat_capacity         number   seat capacity of the Confluence workspace (admin API); Confluence has no plan API
@@ -40,6 +41,8 @@ locals {
   site_workspaces      = [for w in try(local.json.workspaces.data, []) : w if startswith(try(w.attributes.hostUrl, ""), var.tenant.site_url)]
   confluence_workspace = try(one([for w in local.site_workspaces : w if w.attributes.typeKey == "confluence"]), null)
   role_name_by_id      = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
+  allowed_by_kind      = { for a in local.accounts : a.id => try(local.identities.kinds[a.kind], []) }
+  held_by_account      = { for id, d in data.http.account_permissions : id => try(jsondecode(d.response_body).globalPermissions, []) }
   admin_member_status  = { for g, d in data.http.admin_group_members : g => d.status_code }
   admin_members        = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
   # NOERROR and NXDOMAIN are both definitive answers; any other Status means the resolver did not answer.
@@ -131,6 +134,13 @@ locals {
       known = local.status.space_roles == 200
       value = try([for r in local.json.space_roles.results : r.name], [])
     }
+    # A declared account Jira does not know returns 404, so the fact is unknown rather than clean.
+    accounts_holding_disallowed_permissions = {
+      known = alltrue([for id, d in data.http.account_permissions : d.status_code == 200])
+      value = flatten([for id, held in local.held_by_account :
+        [for p in setsubtract(held, local.allowed_by_kind[id]) : "${id}|${p}"]
+      ])
+    }
     site_admin_accounts = {
       known = alltrue([for g, c in local.admin_member_status : c == 200])
       value = distinct(local.admin_members)
@@ -151,7 +161,7 @@ locals {
     }
     exceptional_identities_last_review = {
       known = true
-      value = try(sort([for a in local.identities.accounts : a.reviewed])[0], null)
+      value = try(sort([for a in local.accounts : a.reviewed])[0], null)
     }
   }
 }

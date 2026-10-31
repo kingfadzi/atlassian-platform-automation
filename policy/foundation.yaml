@@ -310,17 +310,21 @@ controls:
     require: { op: superset_of, value_from: policy.space_role_names }
 
   # Native creation closed (Cloud Foundation C): console only, no public write API.
-  - id: native_project_creation_closed
+  # Global permission grants have no read API, but the bulk permission check answers for any
+  # account id, so the engine asks Jira what each declared account actually holds and compares it
+  # with what its kind is allowed (policy/identities.yaml `kinds`). This subsumes project
+  # creation: CREATE_PROJECT simply is not in the list for a kind that may not create projects.
+  - id: account_global_permissions
     phase: guardrails
-    title: Only the engine can create Jira projects (team-managed creation removed from all users)
+    title: Declared accounts hold only the global permissions their kind allows
     register: [SSCF-ACC-03]
     provision: runbook
     where: "Jira > Settings > System > Global permissions"
-    todo: "Remove every group from Create team-managed projects so only Jira administrators can create projects, then record the manual confirmation: global permission holders have no read API."
+    todo: "Remove the reported account from the groups granting that permission; what each kind may hold is policy/identities.yaml."
     mandatory: true
     depends: [jira]
-    fact: manual_confirmation
-    require: { op: manually_confirmed_within_days, value: 90 }
+    fact: accounts_holding_disallowed_permissions
+    require: { op: empty }
 
   - id: native_space_creation_closed
     phase: guardrails
@@ -337,7 +341,7 @@ controls:
   # Exceptional identities (Cloud Foundation B).
   - id: admins_are_listed
     phase: identity
-    title: Every account holding organisation or site administration is in policy/identities.yaml
+    title: Every account holding organisation or site administration is declared in records/<env>/identities.yaml
     register: [SSCF-ACC-01]
     provision: external          # memberships come from the directory
     mandatory: true
@@ -350,7 +354,7 @@ controls:
     title: Exceptional identities reviewed within the window
     register: [SSCF-ACC-01]
     provision: runbook
-    where: "policy/identities.yaml"
+    where: "records/<env>/identities.yaml"
     todo: "Review each account's owner and scope, update reviewed for those still justified, and remove the rest along with their access."
     mandatory: true
     depends: [jira, confluence]

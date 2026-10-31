@@ -251,6 +251,23 @@ out foundation findings | grep -q domain_ \
   && { echo "  FAIL: restoring the record left a domain finding"; exit 1; }
 echo "  record restored: both domain controls clear"
 
+echo "[permissions] a declared account holding more than its kind allows must be named"
+curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/account_global_permissions" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+python3 - "$(out foundation details)" "$(out foundation blocking)" <<'PERM'
+import json, sys
+details, blocking = json.loads(sys.argv[1]), json.loads(sys.argv[2])
+held = details["disallowed_permissions"]
+assert held == ["USER-LAB-ENGINE|SYSTEM_ADMIN"], f"the account and the permission must both be named: {held}"
+assert "account_global_permissions" in blocking, "an over-privileged declared account must block jira"
+print(f"  asked Jira per account: {held[0]}")
+PERM
+curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/account_global_permissions" >/dev/null
+apply_quiet foundation
+out foundation details | grep -q '"disallowed_permissions":\[\]' \
+  || { echo "  FAIL: removing the permission left a finding"; exit 1; }
+echo "  permission removed: every declared account within its kind"
+
 echo "[workflow] a transition missing from the tenant's workflow must be named, not taken on trust"
 curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/asset_workflow_gaps" >/dev/null
 "$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true

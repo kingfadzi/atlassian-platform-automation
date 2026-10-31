@@ -5,7 +5,7 @@
 
 locals {
   treatment    = yamldecode(file("${path.module}/../../policy/treatment.yaml"))
-  lead_account = one([for a in local.identities.accounts : a.id if a.kind == local.treatment.project.lead])
+  lead_account = one([for a in local.accounts : a.id if a.kind == local.treatment.project.lead])
 }
 
 module "treatment_project" {

@@ -9,6 +9,7 @@ locals {
   role_keys      = distinct(flatten([for s in local.standards : s.roles]))
   role_names     = { for r in local.role_keys : r => replace(local.rules.role_name_template, "{role}", r) }
   identities     = yamldecode(file("${path.module}/../../policy/identities.yaml"))
+  accounts       = yamldecode(file("${var.records_dir}/identities.yaml")).accounts # per-tenant; kinds are policy
   conformance    = yamldecode(file("${path.module}/../../policy/conformance.yaml"))
 }
 

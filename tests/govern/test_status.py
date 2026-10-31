@@ -118,7 +118,7 @@ def test_only_manually_confirmed_controls_name_the_record_file():
 
 def test_the_records_path_follows_the_environment():
     verdicts = {c["id"]: "pass" for c in CONTROLS}
-    verdicts["native_project_creation_closed"] = "fail"
+    verdicts["self_signup_off"] = "fail"
     text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)),
                          records="records/prod")
     assert "records/prod/manual_confirmations.yaml" in text

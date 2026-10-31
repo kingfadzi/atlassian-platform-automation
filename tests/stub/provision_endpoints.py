@@ -9,6 +9,10 @@ provision = Blueprint("provision", __name__)
 db.setdefault("roles", {})
 db.setdefault("role_actors", {})       # (project key, role id) -> [group names]
 ADMIN_GROUPS = {"site-admins": ["USER-LAB-ADMIN", "USER-LAB-ENGINE"], "org-admins": ["USER-LAB-ADMIN"]}
+# Global permissions each declared account holds, within what policy/identities.yaml allows its kind.
+HELD = {"USER-LAB-ADMIN": ["ADMINISTER", "CREATE_PROJECT", "CREATE_SHARED_OBJECTS", "BULK_CHANGE", "USER_PICKER"],
+        "USER-LAB-ENGINE": ["ADMINISTER", "CREATE_PROJECT"],
+        "USER-LAB-BREAKGLASS": ["ADMINISTER"]}
 
 
 @provision.get("/rest/api/3/role")
@@ -52,6 +56,21 @@ def group_members():
     if "admins_are_listed" in failing:
         members.append("USER-UNLISTED")
     return jsonify({"values": [{"accountId": m, "active": True} for m in members], "total": len(members), "isLast": True})
+
+
+@provision.post("/rest/api/3/permissions/check")
+def permissions_check():
+    """Bulk permission check. Honours accountId, so an admin can ask what any account holds;
+    404 for an account Jira does not know. Forcing the control gives the engine SYSTEM_ADMIN."""
+    body = request.get_json(silent=True) or {}
+    account = body.get("accountId")
+    if account not in HELD:
+        return jsonify({"errorMessages": ["The specified user does not exist."], "errors": {}}), 404
+    held = list(HELD[account])
+    if "account_global_permissions" in failing and account == "USER-LAB-ENGINE":
+        held.append("SYSTEM_ADMIN")
+    asked = set(body.get("globalPermissions") or [])
+    return jsonify({"projectPermissions": [], "globalPermissions": [p for p in held if p in asked]})
 
 
 @provision.get("/wiki/api/v2/space-roles")

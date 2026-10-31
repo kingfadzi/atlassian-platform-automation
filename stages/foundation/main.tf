@@ -48,6 +48,7 @@ output "details" {
     confluence_retention   = local.facts.confluence_audit_retention_days.value
     default_access_groups  = local.facts.default_access_groups.value
     asset_workflow_gaps    = local.facts.asset_workflow_gaps.value
+    disallowed_permissions = local.facts.accounts_holding_disallowed_permissions.value
   }
 }
 output "policy_version" {
