@@ -64,6 +64,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         outputs,
         args.phase,
         args.records,
+        status.load_steps(ROOT / "policy" / "unchecked.yaml"),
     ))
     return 0
 

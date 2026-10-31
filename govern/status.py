@@ -28,6 +28,11 @@ def load_controls(paths: list[Path]) -> list[dict]:
     return out
 
 
+def load_steps(path: Path) -> list[dict]:
+    """Requirements the engine cannot check (policy/unchecked.yaml). Shown, never judged."""
+    return yaml.safe_load(path.read_text())["steps"]
+
+
 def phase_state(controls: list[dict], verdicts: dict) -> str:
     """blocked if a mandatory control is unsatisfied, findings if only reported ones are, else ok."""
     if not verdicts:
@@ -66,9 +71,10 @@ def instance_scoped(controls: list[dict]) -> bool:
 
 
 def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | None = None,
-           records: str = "records/lab") -> str:
+           records: str = "records/lab", steps: list[dict] | None = None) -> str:
     """outputs maps a stage name to its terraform outputs; a phase with none has not run.
-    `only` narrows the view to one phase."""
+    `only` narrows the view to one phase. `steps` are shown beneath their phase but never judged."""
+    steps = steps or []
     if only:
         phases = [p for p in phases if p["id"] == only]
         if not phases:
@@ -84,26 +90,46 @@ def render(phases: list[dict], controls: list[dict], outputs: dict, only: str | 
     lines = []
     for p in phases:
         mine = [c for c in controls if c.get("phase") == p["id"]]
+        unchecked = [s for s in steps if s.get("phase") == p["id"]]
         if instance_scoped(mine):
             if summary is None:
                 lines += _phase_header(p, "not run", mine, None, records)
-                continue
-            state = "findings" if summary.get("non_conforming") else "ok"
-            lines += _phase_header(p, state, mine, None, records)
-            lines.append(f"{'':<21} {summary.get('projects', 0)} projects, {summary.get('spaces', 0)} spaces, "
-                         f"{summary.get('non_conforming', 0)} non-conforming, {summary.get('unstamped', 0)} unstamped")
-            lines.append(f"{'':<21} {len(estate_findings)} findings across the estate")
+            else:
+                state = "findings" if summary.get("non_conforming") else "ok"
+                lines += _phase_header(p, state, mine, None, records)
+                lines.append(f"{'':<21} {summary.get('projects', 0)} projects, {summary.get('spaces', 0)} spaces, "
+                             f"{summary.get('non_conforming', 0)} non-conforming, {summary.get('unstamped', 0)} unstamped")
+                lines.append(f"{'':<21} {len(estate_findings)} findings across the estate")
+            lines += _unchecked(unchecked)
             lines.append("")
             continue
 
         seen = {k: v for k, v in verdicts.items() if k in {c["id"] for c in mine}}
-        state = phase_state(mine, seen)
-        lines += _phase_header(p, state, mine, seen, records)
+        if mine:
+            lines += _phase_header(p, phase_state(mine, seen), mine, seen, records)
+        else:
+            lines += [f"{p['id']:<11} {'—':<9} {p['title']}", f"{'':<21} covers: {p['covers']}",
+                      f"{'':<21} nothing the engine judges here"]
+        lines += _unchecked(unchecked)
         lines.append("")
 
     lines.append("readiness: " + (", ".join(f"{k}={'ready' if v else 'blocked'}" for k, v in sorted(ready.items()))
                                   if ready else "unknown, no phase has been applied"))
+    lines.append(f"checked:   {len(controls)} controls read from the tenant; "
+                 f"{len(steps)} steps the engine cannot check (policy/unchecked.yaml)")
     return "\n".join(lines)
+
+
+def _unchecked(steps: list[dict]) -> list[str]:
+    """Shown so the work is visible, with the reason, and never mistaken for a verdict."""
+    if not steps:
+        return []
+    lines = [f"{'':<21} not checked by the engine:"]
+    for s in steps:
+        lines.append(f"{'':<21}   ( ) {s['id']}  {s['title']}")
+        lines += _instructions(s, "")
+        lines.append(f"{'':<21}     why:   {s['why']}")
+    return lines
 
 
 def _phase_header(p: dict, state: str, mine: list[dict], seen: dict | None,

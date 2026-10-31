@@ -3,7 +3,8 @@
 # Proves: create then three clean re-plans; out-of-band drift reported with no actions; a removed
 # provisioned grant detected from the tenant and recovered; every seeded instance defect found
 # by estate with no actions; estate refuses a stale foundation; a YAML-only change flips a
-# verdict; a removal from configuration is refused. Run with: make spike
+# verdict; an over-privileged account and a missing workflow transition each named from the
+# tenant; a removal from configuration is refused. Run with: make try
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TF="${1:-terraform}"
@@ -25,8 +26,8 @@ VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directo
 STAGES=(tenancy foundation estate)
 
 (cd "$ROOT/tests/stub" && exec python3 stub_tenant.py "$PORT" >/tmp/stub.log 2>&1) &
-rm -f /tmp/spike-foundation.yaml /tmp/spike-standard.yaml /tmp/spike-rules.json   # copies from an earlier run must never be restored
-STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/estate/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; [ -f /tmp/spike-standard.yaml ] && cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; [ -f /tmp/spike-rules.json ] && cp /tmp/spike-rules.json "$ROOT/jsm/automation-rules.json"; true' EXIT
+rm -f /tmp/spike-foundation.yaml /tmp/spike-standard.yaml   # copies from an earlier run must never be restored
+STUB=$!; trap 'kill $STUB 2>/dev/null; rm -f "$ROOT"/stages/*/backend_override.tf "$ROOT"/stages/estate/remote_state_override.tf; [ -f /tmp/spike-foundation.yaml ] && cp /tmp/spike-foundation.yaml "$ROOT/policy/foundation.yaml"; [ -f /tmp/spike-standard.yaml ] && cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; true' EXIT
 sleep 1.5
 
 # BSD sed requires a suffix for -i and GNU accepts one, so edit in place and drop the backup.
@@ -184,18 +185,6 @@ echo "  standard inactive_days 90 -> 100000: LABOLD recently_active = $(out esta
 cp /tmp/spike-standard.yaml "$ROOT/policy/standards/restricted-collab-v1.yaml"; rm -f /tmp/spike-standard.yaml
 apply_quiet estate
 echo "  restored: LABOLD recently_active = $(out estate instances | python3 -c 'import json,sys; print(json.load(sys.stdin)["jira:LABOLD"]["verdict"]["recently_active"])')"
-
-echo "[imports] a changed jsm/ file must invalidate its record until re-imported and re-recorded"
-cp "$ROOT/jsm/automation-rules.json" /tmp/spike-rules.json
-python3 - "$ROOT/jsm/automation-rules.json" <<'PY'
-import json, sys
-p = sys.argv[1]; d = json.load(open(p)); d["rules"][0]["name"] += " (edited)"; json.dump(d, open(p, "w"), indent=2)
-PY
-apply_quiet foundation
-echo "  rules edited: ready.treatment = $(out foundation ready | python3 -c 'import json,sys; print(json.load(sys.stdin)["treatment"])') blocking = $(out foundation blocking | tr -d '\n ')"
-cp /tmp/spike-rules.json "$ROOT/jsm/automation-rules.json"; rm -f /tmp/spike-rules.json
-apply_quiet foundation
-echo "  restored: ready.treatment = $(out foundation ready | python3 -c 'import json,sys; print(json.load(sys.stdin)["treatment"])')"
 
 echo "[placement] a realm outside the environment's permitted set must block, from policy alone"
 curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/product_placement_permitted" >/dev/null

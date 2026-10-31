@@ -1,0 +1,54 @@
+# Requirements the engine cannot check. A control compares a config we declared against what the
+# tenant honours; these have no read to compare against, or are not a state at all. They are not
+# controls: they carry no fact, produce no verdict and block nothing.
+#
+# They are listed here, and shown by `make <phase>`, so the work stays visible and the reason is
+# on the record. `why` carries the probe that settled it, dated, so it is not re-litigated. If an
+# API appears, the step moves back into policy/foundation.yaml as a control.
+version: 2026-10
+owner: PLATFORM-GOV
+
+steps:
+  - id: public_links_off
+    phase: guardrails
+    title: Public links and external sharing off
+    register: [SSCF-EXP-02]
+    where: "Confluence > Settings > Further configuration, and admin.atlassian.com > Security"
+    todo: "Turn off public links and anonymous external sharing."
+    why: "No read API. /wiki/rest/api/accessmode 404s and settings/systemInfo carries nothing about sharing (2026-10-30). Site-wide anonymous access is covered by the anonymous_confluence_spaces control; a per-page share link is not."
+
+  - id: native_space_creation_closed
+    phase: guardrails
+    title: Only the engine can create Confluence spaces (Create Space held by the engine group)
+    register: [SSCF-ACC-03]
+    where: "Confluence > Settings > Global permissions"
+    todo: "Grant Create space to the engine's group only and remove it from confluence-users and any other group."
+    why: "Confluence exposes no permission check for an account. /wiki/rest/api/user/<id>/permission, /wiki/rest/api/user/check-access/create-space and /wiki/rest/api/permissions/check all 404 (2026-10-30). Jira's equivalent is read by account_global_permissions; Confluence has no counterpart."
+
+  - id: alert_routing_tested
+    phase: guardrails
+    title: Alert routing to responders tested
+    where: "the alerting destination and its on-call route"
+    todo: "Send a test alert and confirm a responder receives it."
+    why: "Not a state. No API can establish that a human was paged, so no read exists to compare against."
+
+  - id: self_signup_off
+    phase: identity
+    title: Self-signup and approved-domain signup off
+    where: "admin.atlassian.com > Settings > User management"
+    todo: "Turn off self-signup and approved-domain signup so accounts arrive only through the identity provider."
+    why: "Unproven. /v1/orgs/<org>/policies?type=user-invite returns 200 with no items, which is the same answer a wrong type name gives, so it establishes nothing (2026-10-30). Retest by changing the setting in the console and re-reading."
+
+  - id: authentication_policy
+    phase: identity
+    title: Authentication policy, SSO and SCIM
+    where: "admin.atlassian.com > Security > Authentication policies"
+    todo: "Require two-step verification and set a session duration. Do not enforce single sign-on without an identity provider behind it."
+    why: "No read API. Probed while Guard was active and a policy existed in the console: policies?type=authentication-policy returns 0 items on v1 and v2 while the same filter returns 12 for data-residency, and /auth-policies, /directories/<id>/auth-policies and /identity-providers all 404 (2026-10-30)."
+
+  - id: automation_rules_imported
+    phase: intake
+    title: Automation rules imported as declared in jsm/automation-rules.json
+    where: "the treatment project > Project settings > Automation > Import rules"
+    todo: "Import jsm/automation-rules.json."
+    why: "No read API. The automation rule API is GA but its base URL could not be established; /gateway/api/automation/internal-api/jira/<cloud>/pro/rest/v1/rule and /rest/api/automation/latest/rule both 404 (2026-10-30). Unlike the Asset workflow, which Jira does report, there is nothing to compare the file against."
