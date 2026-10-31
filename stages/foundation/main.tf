@@ -47,6 +47,7 @@ output "details" {
     domains_missing_record = local.facts.domains_missing_verification_record.known ? local.facts.domains_missing_verification_record.value : null
     confluence_retention   = local.facts.confluence_audit_retention_days.value
     default_access_groups  = local.facts.default_access_groups.value
+    asset_workflow_gaps    = local.facts.asset_workflow_gaps.value
   }
 }
 output "policy_version" {

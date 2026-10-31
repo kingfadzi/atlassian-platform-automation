@@ -251,6 +251,23 @@ out foundation findings | grep -q domain_ \
   && { echo "  FAIL: restoring the record left a domain finding"; exit 1; }
 echo "  record restored: both domain controls clear"
 
+echo "[workflow] a transition missing from the tenant's workflow must be named, not taken on trust"
+curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/asset_workflow_gaps" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+python3 - "$(out foundation details)" "$(out foundation blocking)" <<'PY'
+import json, sys
+details, blocking = json.loads(sys.argv[1]), json.loads(sys.argv[2])
+gaps = details["asset_workflow_gaps"]
+assert gaps == ["transition:Active|Archive|Archived"], f"the missing transition must be named: {gaps}"
+assert "asset_workflow_built" in blocking, "a workflow that does not match the declaration must block treatment"
+print(f"  missing from the tenant: {gaps[0]}")
+PY
+curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/asset_workflow_gaps" >/dev/null
+apply_quiet foundation
+out foundation details | grep -q '"asset_workflow_gaps":\[\]' \
+  || { echo "  FAIL: rebuilding the transition left a gap"; exit 1; }
+echo "  workflow rebuilt: declared and honoured agree"
+
 echo "[destroy] removing a provisioned role from policy must be refused"
 cp "$ROOT/policy/standards/restricted-collab-v1.yaml" /tmp/spike-standard.yaml
 sedi 's/^roles: \[admin, lead, member, viewer\]/roles: [admin, lead, member]/; /^    viewer: /d' "$ROOT/policy/standards/restricted-collab-v1.yaml"

@@ -1,15 +1,37 @@
 """Jira and JSM endpoints behind the asset-treatment service: project, issue types and schemes,
-custom fields, request types, issue search. Shapes follow the OpenAPI documents. Test double only."""
+custom fields, request types, issue search, the Asset workflow. Shapes follow the OpenAPI
+documents. Test double only."""
 
+from pathlib import Path
+
+import yaml
 from flask import Blueprint, jsonify, request
 
-from state import db, ids
+from state import db, failing, ids
 
 treatment = Blueprint("treatment", __name__)
+ROOT = Path(__file__).resolve().parents[2]
 for k in ("issue_types", "scheme_types", "fields", "request_types", "issues"):
     db.setdefault(k, {})
 db["issue_types"].setdefault(10001, {"id": "10001", "name": "Task", "description": "", "subtask": False})
 SCHEME = 10100          # the one issue type scheme every stub project gets
+
+
+@treatment.get("/rest/api/3/workflow/search")
+def workflow_search():
+    """Built from jsm/asset-workflow.yaml so the stub cannot drift from the declaration it serves.
+    Forcing asset_workflow_gaps drops one transition, as an operator who stopped halfway would."""
+    declared = yaml.safe_load((ROOT / "jsm" / "asset-workflow.yaml").read_text())
+    sid = {s["name"]: str(i) for i, s in enumerate(declared["statuses"], 1)}
+    live = [t for t in declared["transitions"]
+            if not ("asset_workflow_gaps" in failing and (t["from"], t["name"]) == ("Active", "Archive"))]
+    return jsonify({"values": [{
+        "id": {"name": declared["name"]},
+        "statuses": [{"id": i, "name": n} for n, i in sid.items()],
+        "transitions": [{"id": str(j), "name": t["name"], "type": "directed",
+                         "from": [sid[t["from"]]], "to": sid[t["to"]]}
+                        for j, t in enumerate(live, 1)],
+    }]})
 
 
 @treatment.post("/rest/api/3/project")

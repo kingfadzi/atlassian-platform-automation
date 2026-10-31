@@ -1,6 +1,6 @@
 # Stage: foundation, part 0b. The asset-treatment service (policy/treatment.yaml): the JSM project
 # users onboard assets through, its Asset issue type and fields, and its request types. What has
-# no write API (workflow, automation) is declared in jsm/ and bound to its file hash. Everything
+# no write API (workflow) is declared in jsm/ and compared against what Jira reports. Everything
 # is read back and judged by controls with depends: [treatment].
 
 locals {
@@ -80,6 +80,11 @@ data "http" "fields" {
   request_headers = local.site_auth
   depends_on      = [module.asset_field]
 }
+data "http" "workflows" {
+  url             = "${var.tenant.site_url}/rest/api/3/workflow/search?expand=transitions,statuses"
+  request_headers = local.site_auth
+}
+
 data "http" "request_types" {
   url             = "${var.tenant.site_url}/rest/servicedeskapi/servicedesk/${local.treatment.project.key}/requesttype"
   request_headers = local.site_auth
@@ -88,6 +93,19 @@ data "http" "request_types" {
 
 locals {
   import_by_id = { for r in local.import_records : r.id => r if r.kind == "import" }
+
+  # Declared workflow against the one Jira reports. Transitions compare as "<from>|<name>|<to>";
+  # the live side carries status ids, so resolve them through the workflow's own status list, and
+  # `from` is a list where `to` is single.
+  asset_workflow = yamldecode(file("${path.module}/../../jsm/asset-workflow.yaml"))
+  live_workflow = try(one([for w in jsondecode(data.http.workflows.response_body).values :
+  w if try(w.id.name, "") == local.asset_workflow.name]), null)
+  live_status_name = { for s in try(local.live_workflow.statuses, []) : tostring(s.id) => s.name }
+  live_transitions = flatten([for t in try(local.live_workflow.transitions, []) : [
+    for f in try(t.from, []) :
+    "${lookup(local.live_status_name, tostring(f), "?")}|${t.name}|${lookup(local.live_status_name, tostring(t.to), "?")}"
+  ]])
+  declared_transitions = [for t in local.asset_workflow.transitions : "${t.from}|${t.name}|${t.to}"]
   treatment_facts = merge(
     {
       service_project_keys = {
@@ -105,6 +123,13 @@ locals {
       treatment_request_types = {
         known = data.http.request_types.status_code == 200
         value = [for r in try(jsondecode(data.http.request_types.response_body).values, []) : r.name]
+      }
+      asset_workflow_gaps = {
+        known = data.http.workflows.status_code == 200
+        value = concat(
+          [for s in setsubtract([for s in local.asset_workflow.statuses : s.name], values(local.live_status_name)) : "status:${s}"],
+          [for t in setsubtract(local.declared_transitions, local.live_transitions) : "transition:${t}"],
+        )
       }
     },
     { for i in local.treatment.imports : "import_current_${i.id}" => {

@@ -1,7 +1,7 @@
 # Desired workflow of the Asset issue type in the treatment project. Jira Cloud has no import for
-# this, so an operator builds it in the console exactly as declared and records the attestation
-# `asset_workflow` with this file's sha256 (docs/runbook-foundation.md). Changing this file
-# invalidates the attestation until the workflow is rebuilt and re-recorded.
+# this, so an operator builds it in the console exactly as declared. The engine then reads the
+# workflow back from Jira and reports every status or transition declared here that Jira does not
+# report (control asset_workflow_gaps), so changing this file changes what the tenant must honour.
 name: Asset treatment
 statuses:
   - { name: Requested,  category: new }
