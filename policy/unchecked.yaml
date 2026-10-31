@@ -46,6 +46,14 @@ steps:
     todo: "Require two-step verification and set a session duration. Do not enforce single sign-on without an identity provider behind it."
     why: "No read API. Probed while Guard was active and a policy existed in the console: policies?type=authentication-policy returns 0 items on v1 and v2 while the same filter returns 12 for data-residency, and /auth-policies, /directories/<id>/auth-policies and /identity-providers all 404 (2026-10-30)."
 
+  - id: exceptional_identities_reviewed
+    phase: identity
+    title: Exceptional identities reviewed within the window
+    register: [SSCF-ACC-01]
+    where: "the accounts list in the environment's intent (foundation.accounts)"
+    todo: "Review each account's owner and scope, keep the ones still justified, and remove the rest along with their access."
+    why: "Not a state. The review is a person's account of work they did, and the only date available is one they write into our own declaration, so there is nothing on the platform to compare it with. Which accounts hold what is checked by account_global_permissions and admins_are_listed; whether the list is still justified is not."
+
   - id: automation_rules_imported
     phase: intake
     title: Automation rules imported as declared in jsm/automation-rules.json

@@ -1,6 +1,6 @@
 """govern: gate | review | verify. Terraform itself is driven by the pipeline, not by Python.
 
-  govern gate   --plan-json plan.json --stage admit --records records/lab [--authority authority.yaml]
+  govern gate   --plan-json plan.json --stage admit [--ledger ledger/lab.jsonl]
   govern review --plan plan.bin --reviewer USER --admin USER --out review.json
   govern verify --plan plan.bin --review review.json
   govern status [--outputs <phase>=<terraform output -json>]...
@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from govern import currency, gate, provenance, review, status
+from govern import gate, provenance, review, status
 
 ROOT = Path(__file__).resolve().parent.parent
 POLICY = ROOT / "policy" / "gate.yaml"
@@ -24,9 +24,7 @@ POLICY = ROOT / "policy" / "gate.yaml"
 def cmd_gate(args: argparse.Namespace) -> int:
     rules = yaml.safe_load(POLICY.read_text())
     plan = json.loads(Path(args.plan_json).read_text())
-    records = currency.load_records(Path(args.records))
-    verdict = gate.evaluate(plan, rules, records.get("authority"))
-    verdict.blocked.extend(currency.currency_findings(records, rules["windows_days"]))
+    verdict = gate.evaluate(plan, rules)
     report = {"stage": args.stage, "ok": verdict.ok, "creates": verdict.creates,
               "blocked": verdict.blocked, "reported": verdict.reported,
               "policy": {"files": provenance.policy_digests(ROOT, rules.get("policy_files", [])),
@@ -74,7 +72,6 @@ def main(argv: list[str] | None = None) -> int:
     g = sub.add_parser("gate")
     g.add_argument("--plan-json", required=True)
     g.add_argument("--stage", required=True)
-    g.add_argument("--records", required=True)
     g.add_argument("--ledger")
     g.set_defaults(func=cmd_gate)
     r = sub.add_parser("review")

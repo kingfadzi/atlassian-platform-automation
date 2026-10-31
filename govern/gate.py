@@ -16,24 +16,21 @@ class Verdict:
         return not self.blocked
 
 
-def evaluate(plan: dict, rules: dict, authority: dict | None = None) -> Verdict:
+def evaluate(plan: dict, rules: dict) -> Verdict:
     """Return the gate verdict for one plan. Pure function; no I/O."""
     verdict = Verdict()
-    _classify_actions(plan, rules["actions"], authority or {}, verdict)
+    _classify_actions(plan, rules["actions"], verdict)
     _classify_drift(plan, rules["drift"], verdict)
     _classify_checks(plan, rules["checks"], verdict)
     return verdict
 
 
-def _classify_actions(plan: dict, rules: dict, authority: dict, verdict: Verdict) -> None:
+def _classify_actions(plan: dict, rules: dict, verdict: Verdict) -> None:
     for change in plan.get("resource_changes", []):
         address, actions = change["address"], change["change"]["actions"]
         label = "replace" if actions in (["delete", "create"], ["create", "delete"]) else actions[0]
-        if change["change"].get("importing"):
-            if rules["import_requires_authority"] and address not in authority.get("adoptions", {}):
-                verdict.blocked.append(f"{address}: import without an adoption authority record")
-            else:
-                verdict.reported.append(f"{address}: import under {authority['adoptions'][address]}")
+        if change["change"].get("importing") and rules["refuse_import"]:
+            verdict.blocked.append(f"{address}: adopting an existing object is not permitted")
             continue
         if label in rules["blocked"]:
             verdict.blocked.append(f"{address}: planned action '{label}' is not permitted")

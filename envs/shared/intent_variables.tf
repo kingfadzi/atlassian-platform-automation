@@ -31,15 +31,15 @@ variable "foundation" {
     banner_contains                = optional(string, "governed") # text the announcement banner must carry
     confluence_free_seats_plus_one = optional(number, 11)         # Free tier is 10 seats; capacity above it implies a paid plan
     approved_realms                = optional(list(string), [])   # residency realms this tenant is expected to be in; empty = not checked
+    accounts = optional(list(object({                             # accounts with admin, automation or emergency access
+      id    = string                                              # Atlassian account id
+      kind  = string                                              # a kind declared in policy/identities.yaml
+      owner = optional(string)                                    # documentation: who answers for it
+      scope = optional(string)                                    # documentation: why it exists
+    })), [])
   })
   description = "Tenant specifics for the non-mandatory foundation controls (see policy/foundation.yaml)."
   default     = {}
-}
-
-variable "records_dir" {
-  type        = string
-  description = "Directory holding identities.yaml, authority.yaml and exceptions.yaml (outside Git in anything but the lab)."
-  default     = "../../records/lab"
 }
 
 # The environment this plan is for. Policy keys its per-environment requirements on this, so the

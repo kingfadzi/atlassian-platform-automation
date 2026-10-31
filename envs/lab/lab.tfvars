@@ -14,6 +14,14 @@ foundation = {
   product_access_groups = []                          # empty = report default access groups without judging them
   banner_contains       = "governed"
   approved_realms       = ["global"] # what this site reports; the lab is permitted global in policy
+
+  # Accounts with admin, automation or emergency access. Anything with admin power not listed here
+  # is a finding; what each kind may hold is policy/identities.yaml.
+  accounts = [
+    { id = "USER-LAB-ADMIN", kind = "human_admin", owner = "PLATFORM-GOV", scope = "organisation and site administration (lab)" },
+    { id = "USER-LAB-ENGINE", kind = "engine", owner = "PLATFORM-GOV", scope = "pipeline principal; scoped tokens per stage; no interactive login" },
+    { id = "USER-LAB-BREAKGLASS", kind = "emergency", owner = "PLATFORM-GOV", scope = "sealed credentials; use raises a finding" },
+  ]
 }
 
 # Resolvers the verification TXT records are read through. Unset here because the domains above do

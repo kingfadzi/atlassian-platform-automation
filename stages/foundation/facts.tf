@@ -20,7 +20,6 @@
 #   confluence_space_roles           list     space role names available on the site
 #   site_admin_accounts              list     account ids in the admin groups named in policy/identities.yaml
 #   accounts_holding_disallowed_permissions list "<account>|<permission>" a declared account holds but its kind forbids
-#   exceptional_identities_last_review string RFC 3339 of the oldest review in records_dir/identities.yaml
 #   jira_application_plans           map      Jira application id => UNLICENSED | FREE | PAID (instance license)
 #   jira_paid_application_count      number   Jira applications on a PAID plan
 #   confluence_seat_capacity         number   seat capacity of the Confluence workspace (admin API); Confluence has no plan API
@@ -151,10 +150,6 @@ locals {
     confluence_seat_capacity = {
       known = local.status.workspaces == 200 && can(local.confluence_workspace.relationships.entitlement[0].attributes.softCapacityLimit)
       value = try(local.confluence_workspace.relationships.entitlement[0].attributes.softCapacityLimit, null)
-    }
-    exceptional_identities_last_review = {
-      known = true
-      value = try(sort([for a in local.accounts : a.reviewed])[0], null)
     }
   }
 }

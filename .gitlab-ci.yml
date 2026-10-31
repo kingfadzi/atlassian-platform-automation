@@ -62,7 +62,7 @@ validate:
   image: python:3.12-alpine
   script:
     - pip install -q -r requirements.txt
-    - python3 -m govern.cli gate --plan-json stages/$STAGE/plan.json --stage $STAGE --records records/$ENV --ledger ledger/$ENV.jsonl
+    - python3 -m govern.cli gate --plan-json stages/$STAGE/plan.json --stage $STAGE --ledger ledger/$ENV.jsonl
     - python3 -m govern.cli review --plan stages/$STAGE/plan.bin --reviewer "$REVIEWER_REF" --admin "$ADMIN_REF" --out stages/$STAGE/review.json
   artifacts:
     paths: [stages/$STAGE/review.json, ledger/]
@@ -111,7 +111,7 @@ drift:
   script:
     - terraform -chdir=stages/$STAGE plan -refresh-only -out=plan.bin -var-file=../../envs/$ENV/$ENV.tfvars
     - terraform -chdir=stages/$STAGE show -json plan.bin > stages/$STAGE/plan.json
-    - python3 -m govern.cli gate --plan-json stages/$STAGE/plan.json --stage $STAGE --records records/$ENV --ledger ledger/$ENV.jsonl
+    - python3 -m govern.cli gate --plan-json stages/$STAGE/plan.json --stage $STAGE --ledger ledger/$ENV.jsonl
   artifacts:
     paths: [ledger/]
     when: always

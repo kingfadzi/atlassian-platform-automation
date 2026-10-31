@@ -273,20 +273,6 @@ controls:
     fact: site_admin_accounts
     require: { op: subset_of, value_from: policy.admin_accounts }
 
-  - id: exceptional_identities_reviewed
-    phase: identity
-    title: Exceptional identities reviewed within the window
-    register: [SSCF-ACC-01]
-    provision: runbook
-    where: "records/<env>/identities.yaml"
-    todo: "Review each account's owner and scope, update reviewed for those still justified, and remove the rest along with their access."
-    mandatory: true
-    depends: [jira, confluence]
-    fact: exceptional_identities_last_review
-    require: { op: within_days, value: 90 }
-
-  # Asset-treatment service (Asset Ownership and Treatment; policy/treatment.yaml). Readiness
-  # dimension `treatment`; nothing depends on it yet.
   - id: treatment_project_present
     phase: intake
     title: The asset-treatment service project exists as a service desk

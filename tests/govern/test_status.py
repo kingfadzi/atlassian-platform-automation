@@ -32,9 +32,10 @@ def test_no_control_and_no_step_share_an_id():
     assert not ({c["id"] for c in CONTROLS} & {s["id"] for s in STEPS})
 
 
-def test_every_control_reads_the_tenant():
-    """The catalogue is only for comparisons against the running system. Anything the engine
-    cannot read belongs in policy/unchecked.yaml."""
+def test_every_control_names_a_fact():
+    """Weaker than it looks, and named for what it checks. Whether a fact reaches the tenant
+    cannot be asserted here: fact bodies reach data "http" through locals, so scanning the HCL
+    gives false positives. That property is reviewed against the vocabulary in facts.tf."""
     assert [c["id"] for c in CONTROLS if not c.get("fact") and "action" not in c] == []
 
 

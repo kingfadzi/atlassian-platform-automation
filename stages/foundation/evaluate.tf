@@ -48,6 +48,16 @@ resource "terraform_data" "phases_are_known" {
       error_message = "A console control must say where to go and what to do: ${join(", ", [for c in local.catalogue_controls :
       c.id if try(c.provision, "") == "runbook" && (try(c.where, "") == "" || try(c.todo, "") == "")])}."
     }
+    # A kind policy does not define resolves to an empty allow-list, which fails the control while
+    # reporting every permission the account holds instead of naming the typo.
+    precondition {
+      condition = length(setsubtract(
+        distinct([for a in local.accounts : a.kind]), keys(local.identities.kinds)
+      )) == 0
+      error_message = "Declared accounts name kinds policy/identities.yaml does not define: ${join(", ", [
+        for a in local.accounts : "${a.id} -> ${a.kind}" if !contains(keys(local.identities.kinds), a.kind)
+      ])}."
+    }
     precondition {
       condition = length(setsubtract(
         distinct([for c in local.catalogue_controls : try(c.phase, "")]),

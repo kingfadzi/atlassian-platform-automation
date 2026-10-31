@@ -13,9 +13,7 @@ export TF_IN_AUTOMATION=1 TF_INPUT=0
 export TF_VAR_atlassian_org_api_key=stub TF_VAR_atlassian_email=admin@lab TF_VAR_atlassian_api_token=stub
 export TF_VAR_admin_api_url="http://127.0.0.1:$PORT/admin"
 export TF_VAR_env=lab
-# records fixture: the stub tenant's declared accounts
-rm -rf /tmp/spike-records && cp -r "$ROOT/tests/stub/records" /tmp/spike-records
-VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "records_dir=/tmp/spike-records" -var "dns_resolvers=[\"http://127.0.0.1:$PORT/dns/resolve\"]")
+VARS=(-var-file="$ROOT/envs/lab/lab.tfvars" -var 'tenant={org_id="org-1",directory_id="dir-1",site_url="http://127.0.0.1:8089",group_pattern="^lab-"}' -var "dns_resolvers=[\"http://127.0.0.1:$PORT/dns/resolve\"]")
 STAGES=(tenancy foundation estate)
 
 (cd "$ROOT/tests/stub" && exec python3 stub_tenant.py "$PORT" >/tmp/stub.log 2>&1) &

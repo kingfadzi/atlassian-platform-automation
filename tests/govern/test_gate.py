@@ -1,10 +1,9 @@
 import json
-from datetime import date
 from pathlib import Path
 
 import yaml
 
-from govern import cli, currency, gate, provenance
+from govern import cli, gate, provenance
 
 ROOT = Path(__file__).resolve().parents[2]
 RULES = yaml.safe_load((ROOT / "policy" / "gate.yaml").read_text())
@@ -28,29 +27,18 @@ def test_updates_and_deletes_block():
     assert len(verdict.blocked) == 3
 
 
-def test_create_allowed_import_needs_authority():
+def test_create_is_allowed_and_adopting_an_existing_object_is_refused():
+    """The platform creates its own objects. Pulling a pre-existing one into state is refused
+    outright, so no approval record can wave it through."""
     plan = {"resource_changes": [change("new", ["create"]), change("old", ["no-op"], importing=True)]}
-    assert gate.evaluate(plan, RULES).blocked == ["old: import without an adoption authority record"]
-    assert gate.evaluate(plan, RULES, {"adoptions": {"old": "AUTH-ADOPT-01"}}).ok
+    verdict = gate.evaluate(plan, RULES)
+    assert verdict.blocked == ["old: adopting an existing object is not permitted"]
+    assert verdict.creates == ["new"]
 
 
 def test_vanished_object_blocks_recreate():
     plan = {"resource_drift": [{"address": "g", "change": {"actions": ["delete"], "before": {}, "after": None}}]}
     assert "investigate" in gate.evaluate(plan, RULES).blocked[0]
-
-
-def test_currency_windows_are_applied_to_the_real_records_directory():
-    """Over the committed records, not a synthetic dict: the file name no longer has to match the
-    kind, and a dict keyed by hand is what let authority records go unchecked."""
-    records = currency.load_records(ROOT / "records" / "lab")
-    assert "authority" in records, "authority.yaml must be loaded for its window to apply"
-    assert currency.currency_findings(records, RULES["windows_days"], today=date(2028, 1, 1))
-    assert not currency.currency_findings(records, RULES["windows_days"], today=date(2026, 10, 23))
-
-
-def test_a_kind_with_no_window_never_expires():
-    records = {"imports": {"records": [{"id": "x", "kind": "import", "recorded": date(2020, 1, 1)}]}}
-    assert currency.currency_findings(records, RULES["windows_days"], today=date(2026, 10, 23)) == []
 
 
 def test_foundation_fixture_blocks_mandatory_and_reports_findings():
@@ -80,7 +68,7 @@ def test_gate_creates_the_ledger_directory(tmp_path):
     ledger = tmp_path / "ledger" / "lab.jsonl"
     rc = cli.main(["gate", "--plan-json",
                    str(ROOT / "tests" / "govern" / "fixtures" / "plan_foundation_blocked.json"),
-                   "--stage", "foundation", "--records", str(ROOT / "records" / "lab"),
+                   "--stage", "foundation",
                    "--ledger", str(ledger)])
     assert rc == 3                                  # the fixture blocks; the write must still happen
     assert json.loads(ledger.read_text().splitlines()[-1])["stage"] == "foundation"
