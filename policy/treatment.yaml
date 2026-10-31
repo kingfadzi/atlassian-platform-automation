@@ -10,7 +10,7 @@ project:
   name: Asset Treatment Service
   type: service_desk
   template: com.atlassian.servicedesk:simplified-general-service-desk-it   # confirm against GET /rest/api/3/project/type in the lab
-  lead: engine                        # kind whose declared account leads the project (records/<env>/identities.yaml)
+  lead: engine                        # kind whose declared account leads the project (foundation.accounts)
   description: "Self-service onboarding, change, review and retirement of Jira projects and Confluence spaces | managed by platform automation"
 
 asset:                                # one record per instance; estate links instances to it

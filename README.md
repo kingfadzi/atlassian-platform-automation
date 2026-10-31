@@ -13,10 +13,12 @@ gate, no destroy job. The repo holds no instance: no project, space, group or pe
 | Change what the foundation must look like | `policy/foundation.yaml` (`fact`, `require`, `provision`, `mandatory`) |
 | Change a template: roles, grants, project types, lifecycle windows | `policy/standards/<id>.yaml` (a changed standard is a new file with `supersedes`) |
 | Change what an instance must satisfy, or what happens when it does not | `policy/conformance.yaml` (`controls`, `action`, `enabled_actions`) |
-| Change the asset-treatment service: request types, Asset fields, project | `policy/treatment.yaml`; workflow and automation in `jsm/` (imported by hand, attested by hash) |
-| Change who may hold admin, engine or emergency access | `policy/identities.yaml` |
+| Change the asset-treatment service: request types, Asset fields, project | `policy/treatment.yaml`; workflow and automation in `jsm/`, built by hand in the console |
+| Change what a kind of admin, engine or emergency account may hold | `policy/identities.yaml` |
+| Change which accounts exist on a tenant | `foundation.accounts` in `envs/<env>/<env>.tfvars` |
 | Change what the gate blocks or reports | `policy/gate.yaml` |
-| Do a console-only foundation step and record it | `make <phase>` prints where and what; record it in `records/<env>/attestations.yaml` |
+| Do a console-only foundation step | `make <phase>` prints where and what; the engine reads it back, so there is nothing to record |
+| Record a requirement the engine cannot read | `policy/unchecked.yaml`, with the probe that settled it |
 | Point at a tenant | `envs/<env>/<env>.tfvars`: organisation, directory, site URL, AD group pattern |
 | Read a new property of the tenant or of an instance | one fact block in `stages/foundation/facts.tf` or `stages/estate/facts.tf` (plus its `data "http"`) |
 | Add a provisioned resource kind | a new folder under `modules/` with one `restapi_object` and a `check`, wired in `stages/foundation/provision.tf` |
@@ -55,12 +57,12 @@ policy/phases.yaml             the stand-up sequence: what each phase covers and
 policy/foundation.yaml         shared controls: a fact, a requirement, who provisions it, and the console step
 policy/standards/<id>.yaml     templates: roles, per-role grants, space roles, project types, lifecycle windows
 policy/conformance.yaml        instance controls, the action rung per control, stamp and public-access definitions
-policy/treatment.yaml          the asset-treatment service: JSM project, Asset issue type and fields, request types, imports
-policy/identities.yaml         exceptional identities: admin, engine and emergency accounts, with owner and review date
+policy/treatment.yaml          the asset-treatment service: JSM project, Asset issue type and fields, request types
+policy/identities.yaml         kinds of exceptional identity, and the global permissions each kind may hold
 policy/intent_rules.yaml       naming rules, and the realms each environment may place data in
-policy/gate.yaml               what the gate blocks or reports, currency windows, policy files hashed into the ledger
-jsm/                           declared workflow and automation rules for the service, attested by file hash
-records/<env>/                 attestations, authority and exceptions you record after a console step
+policy/gate.yaml               what the gate blocks or reports, and the policy files hashed into the ledger
+policy/unchecked.yaml          requirements the engine cannot read: steps and exemptions, never verdicts
+jsm/                           declared workflow and automation rules for the service, built by hand
 ```
 
 What you read.
@@ -68,7 +70,7 @@ What you read.
 ```
 make, make <phase>             where the platform stands and what is outstanding
 docs/policy-as-data.md         the three layers: requirements, facts, evaluation
-docs/runbook-foundation.md     recording an attestation, what a plan allows before you attest, recovery
+docs/runbook-foundation.md     doing a console step, what a plan allows, unknown verdicts, recovery
 docs/conformance.md            how an instance is classified and judged, and the rung a deviation earns
 contracts/<env>.json           written after the foundation apply; what JSM reads to create instances
 ```
@@ -81,24 +83,31 @@ stages/foundation              provision roles and a scheme per standard, stand 
 stages/estate                  discover every project and space, then judge each against the standard it claims
 envs/shared/*.tf               input shape and validations, providers, credentials, backend; symlinked into stages
 modules/                       one restapi_object per resource kind, plus control_evaluation (generic, own tests)
-govern/                        the gate, currency, review, provenance, the status view, cli
+govern/                        the gate, review, provenance, the status view, cli
 tests/                         input rules, gate units, the stub tenant and the end-to-end spike
 ```
 
 ## Lifecycle
 
 tenancy (observe tenancy) → foundation (provision templates and the asset-treatment service, then
-probe, observe, attest; publish `ready = { jira, confluence, treatment }` and `contract`) → estate (discover instances, classify by stamp or scheme, evaluate, act by
+probe, observe, judge; publish `ready = { jira, confluence, treatment }` and `contract`) → estate (discover instances, classify by stamp or scheme, evaluate, act by
 rule) → operate (scheduled: foundation drift and estate conformance, gate writes the ledger).
 
 Every foundation control says who makes it true: `engine` (provisioned here from policy), `runbook`
-(console only, done once by a named operator and attested, see `docs/runbook-foundation.md`) or
-`external` (identity provider, AD, Atlassian rollout; verified only). An apply is never proof: what the
-engine creates is read back from the tenant and judged like any other fact. Lab mandatory core:
-anonymous Jira and Confluence closed, no public scheme grants, audit collection live, public links
-attested off, the provisioned templates present and complete, Confluence space roles available, native
-project and space creation closed, exceptional identities listed and reviewed. Twelve further
-controls are reported, not blocking.
+(console only, done once by a person, see `docs/runbook-foundation.md`) or `external` (identity
+provider, AD, Atlassian rollout). That says who writes the setting, not whether the engine can read
+it: every control compares something declared against what the tenant reports, so an apply is never
+proof and a console step is never taken on trust. 26 controls, 18 of them mandatory: anonymous Jira
+and Confluence closed, no public scheme grants, audit collection live, declared domains verified,
+products in a permitted realm, the provisioned templates present and complete, Confluence space
+roles available, declared accounts holding only what their kind allows, admins all declared, the
+asset-treatment service present, and the Asset workflow matching its declaration. The other 8 are
+reported, not blocking.
+
+A requirement the engine cannot read is not a control. The 7 in `policy/unchecked.yaml` — public
+links, Confluence space creation, self-signup, the Guard authentication policy, alert routing, the
+automation rules import, and reviewing the declared accounts — carry the probe that settled it, and
+`make <phase>` lists them as steps with no verdict.
 
 Instances are created through the asset-treatment service (`ATS`, a JSM project the foundation
 provisions with an `Asset` issue type, its fields and onboard, change, review and retire request
@@ -122,8 +131,8 @@ make <phase>                   one phase: what is required, what is outstanding,
 make status                    every phase at once
 make try                       tenancy, foundation and estate against the stub: create, three clean re-plans, drift reported,
                                removed grant detected and recovered, ten seeded instances judged against their Asset records,
-                               stale foundation refused, YAML-only changes flip readiness and a verdict, an edited jsm/ file
-                               invalidates its attestation, removal from policy refused
+                               stale foundation refused, YAML-only changes flip readiness and a verdict, an over-privileged
+                               account and a missing workflow transition each named, removal from policy refused
 make check                     fmt, validate, terraform test (input rules, evaluation operators), gate tests
 make deps                      the local Python environment
 ```
@@ -135,7 +144,7 @@ What you need from the tenant, once:
 - Organisation id and an organisation API key: admin.atlassian.com > Settings > API keys (the org id is in the URL).
 - Directory id: run the tenancy stage; its `directory_ids` output lists them.
 - An API token for the engine identity (id.atlassian.com > Security > API tokens).
-- The console-only steps in `docs/runbook-foundation.md`, recorded in `records/lab/attestations.yaml`.
+- The console-only steps in `docs/runbook-foundation.md`; the engine reads each one back, so none is recorded.
 
 Set `tenant` in `envs/lab/lab.tfvars` from the tenancy output, export the credentials as
 `TF_VAR_*`, then run the pipeline. Locally: `terraform -chdir=stages/tenancy plan -var-file=../../envs/lab/lab.tfvars`

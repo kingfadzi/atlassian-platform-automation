@@ -5,6 +5,11 @@
 # They are listed here, and shown by `make <phase>`, so the work stays visible and the reason is
 # on the record. `why` carries the probe that settled it, dated, so it is not re-litigated. If an
 # API appears, the step moves back into policy/foundation.yaml as a control.
+#
+# This is also where an exemption belongs: a control that applies but whose breach has been
+# accepted. There is no `exemptions:` key yet because there is no exemption yet, and an unused key
+# with no reader is what the deleted records/exceptions.yaml was. The first real one brings the key
+# and the code that honours it together.
 version: 2026-10
 owner: PLATFORM-GOV
 

@@ -265,7 +265,7 @@ controls:
 
   - id: admins_are_listed
     phase: identity
-    title: Every account holding organisation or site administration is declared in records/<env>/identities.yaml
+    title: Every account holding organisation or site administration is declared in foundation.accounts
     register: [SSCF-ACC-01]
     provision: external          # memberships come from the directory
     mandatory: true

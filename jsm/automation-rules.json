@@ -1,5 +1,5 @@
 {
-  "_comment": "Draft rule set for the treatment project, in the shape of a Jira Automation export. Placeholders in {{ }} are filled from contracts/<env>.json before import. Refine against a real export in the lab; the attestation `automation_rules` carries this file's sha256.",
+  "_comment": "Draft rule set for the treatment project, in the shape of a Jira Automation export. Placeholders in {{ }} are filled from contracts/<env>.json before import. Refine against a real export in the lab. Jira exposes no read for automation rules, so the engine cannot compare this file with the tenant: it is a documented step in policy/unchecked.yaml.",
   "rules": [
     {
       "name": "Onboard: create the instance from the template",

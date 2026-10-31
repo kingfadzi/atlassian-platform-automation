@@ -35,18 +35,21 @@ vocabulary at the top of that file, and then usable from YAML. Nothing else move
 - `policy/conformance.yaml`: what every instance must satisfy, the rung (`report`, `flag`,
   `restrict`, `archive`) for each failing control, how instances name their template (`stamp`) and
   what counts as public access.
-- `policy/identities.yaml`: the exceptional identities (admin, engine, emergency) with owner, scope
-  and review date; `admins_are_listed` and `exceptional_identities_reviewed` read it.
+- `policy/identities.yaml`: the kinds of exceptional identity (admin, engine, emergency) and the
+  global permissions each may hold; `account_global_permissions` reads it. The accounts themselves
+  are per-tenant and live in `foundation.accounts`.
+- `policy/unchecked.yaml`: requirements the engine cannot read, with the probe that settled it.
+  Steps, not controls: no fact, no verdict, no blocking. Exemptions belong here too.
 - `policy/intent_rules.yaml`: naming rules for what the engine provisions (standard ids, role names).
-- `policy/gate.yaml`: what the gate blocks or reports, the currency windows, and `policy_files`.
+- `policy/gate.yaml`: what the gate blocks or reports, and `policy_files`.
 
 Every file has a `version` or `effective_from` and a `register` reference where one exists, so a
 change can be traced to the register entry that caused it.
 
 ## Comparison operators
 
-Eight, and the set is a ceiling: `equals`, `empty`, `at_least`, `within_days`,
-`attested_within_days`, `superset_of`, `subset_of`, `contains`. `value_from` takes the required
+Seven, and the set is a ceiling: `equals`, `empty`, `at_least`, `within_days`,
+`superset_of`, `subset_of`, `contains`. `value_from` takes the required
 value from the stage's intent map instead of a literal (`foundation.*` from tfvars, `policy.*`
 derived from the policy files, `standard.*` and `tenant.*` per instance in `estate`); when it
 resolves to null or an empty collection the control is `not_applicable` because there is nothing
@@ -54,7 +57,8 @@ to require. A number is always applicable. A fact that could
 not be read gives `unknown`, which counts as unsatisfied for a mandatory control. When a requirement
 cannot be stated with these operators the review question is "which fact is missing", not "which
 operator should we add". A catalogue naming a fact that is not observed, or an operator outside the
-eight, fails at plan time.
+seven, fails at plan time. A requirement with no fact to read at all is not a control: it belongs in
+`policy/unchecked.yaml`.
 
 ## Provenance
 

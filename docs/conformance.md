@@ -3,7 +3,7 @@
 The engine holds no list of instances. `stages/estate` discovers every Jira project and Confluence
 space in the tenant, works out which template each belongs to, judges it against
 `policy/conformance.yaml` with the values of its standard, and assigns each failing control a rung.
-It runs after the foundation and refuses a foundation evaluation older than `windows_days.foundation`.
+It runs after the foundation and refuses a foundation evaluation older than `foundation_window_days`.
 
 ## Classification
 
@@ -16,7 +16,7 @@ standard); anything else is judged against `fallback_standard`. A missing stamp 
 ## Facts, controls, rungs
 
 Per-instance facts are listed at the top of `stages/estate/facts.tf`. A control is a fact, a
-requirement (same eight operators as the foundation) and an `action`:
+requirement (same seven operators as the foundation) and an `action`:
 
 | Rung | Meaning | Executor |
 |---|---|---|

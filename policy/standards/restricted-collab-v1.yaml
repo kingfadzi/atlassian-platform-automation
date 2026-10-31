@@ -1,4 +1,5 @@
-# Asset standard: restricted collaboration. Selected by governance.standard in the intent.
+# Asset standard: restricted collaboration. An instance names it with a stamp set at creation;
+# stages/estate classifies by that stamp, or by the scheme when a stamp is missing.
 # A changed standard is a new file with `supersedes`; this file stays so assets admitted under it
 # remain explainable. Modules carry no policy defaults; everything they grant comes from here.
 #
@@ -26,15 +27,8 @@ jira:
 
 confluence:
   space_roles: { admin: Admin, lead: Manager, member: Collaborator, viewer: Viewer }
-  audience_operations: [read]          # used until space role assignment replaces granular grants
 
 lifecycle:                  # windows stages/estate applies to instances of this standard (days)
   inactive_days: 90         # no issue or page activity for this long: flagged
   abandoned_days: 180       # inactive this long, or no admin group bound: eligible for archive
   review_days: 365          # owner review due (JSM review request; phase 3)
-
-description_template: "${business_authority} | ${standard} | ${classification} | managed by platform automation"
-
-release:
-  denied_status_codes: [401, 403, 404]
-  anonymous_status_codes: [401, 403, 404]

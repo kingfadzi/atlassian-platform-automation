@@ -1,68 +1,71 @@
 # Foundation runbook
 
-Every control in `policy/foundation.yaml` carries `provision: engine | runbook | external`.
-`engine` settings are created by `stages/foundation/provision.tf` from policy and read back as facts.
-`external` settings belong to another system and are only verified. `runbook` settings have no
-public write API: a named operator makes them true once in the admin console and records an
-attestation. The attestation is a fact like any other and expires; the control tells you when.
+Every control in `policy/foundation.yaml` carries `provision: engine | runbook | external`. That
+says who makes the setting true, not whether the engine can read it.
 
-## Recording an attestation
+- `engine` — created by `stages/foundation/provision.tf` from policy, then read back as a fact.
+- `runbook` — no public write API; a person does it once in the admin console.
+- `external` — owned by another system, verified only.
 
-Append to `records/<env>/attestations.yaml` (outside Git in anything but the lab):
+Every control, whatever its `provision`, compares something declared against what the tenant
+reports. A requirement the engine cannot read is not a control: it lives in `policy/unchecked.yaml`
+and `make <phase>` lists it as a step, with the probe that settled it.
 
-```yaml
-records:
-  - { id: native_project_creation_closed, kind: attestation, recorded: 2026-10-24T15:00:00Z, by: USER-LAB-ADMIN }
-```
+## Doing a console step
 
-`id` is the control id, `recorded` is RFC 3339 in UTC, `by` is an account from `policy/identities.yaml`.
-The window (`attested_within_days`) is in the catalogue; when it lapses the control fails and the
-products that depend on it are reported as not ready until the step is repeated and re-recorded.
-The lab's `records/lab/attestations.yaml` is the honest record for the real lab tenant; the stub
-spike uses its own fixture under `tests/stub/records` and never writes to it.
+- `make <phase>` prints the `where` and `todo` of anything outstanding, from the catalogue itself.
+- Do the step in the console. There is nothing to record afterwards: the engine reads the tenant on
+  the next plan and the control clears on its own.
+- Nothing is attested. A date in a file proves nothing and cannot detect the setting being changed
+  back, which is what this repository exists to catch.
 
-## Before you attest: what the plan allows
+## What the plan allows
 
-Read the foundation output `entitlement` (and the reported controls `jira_plan_paid`,
-`confluence_plan_above_free`) first. On a Free plan several console steps cannot be completed:
-Confluence Free has no global or space permission settings, so "Create space" cannot be held to
-the engine group and `native_space_creation_closed` must stay unrecorded; the products that depend
-on it stay not ready, which is the honest state. Never record an attestation for a step the plan
-does not allow. Decision for the lab: validate on a Confluence Standard trial so
-`native_space_creation_closed` can be performed and recorded honestly; when the trial lapses the
-entitlement findings reappear and the attestation no longer describes the tenant, so re-check it.
-A firm tenant flips both entitlement controls to mandatory.
+- Read the foundation output `entitlement`, and the reported controls `jira_plan_paid` and
+  `confluence_plan_above_free`.
+- On a Free plan several console steps cannot be done at all. Confluence Free has no global or space
+  permission settings, so "Create space" cannot be held to the engine group.
+- A step the plan does not allow stays outstanding. That is the honest state; there is no way to
+  mark it done.
+- Decision for the lab: validate on a Confluence Standard trial so space creation can be performed.
+- A firm tenant flips both entitlement controls to mandatory.
 
-A group named in `policy/identities.yaml` `admin_groups` that does not exist on the site leaves
-`site_admin_accounts` unknown and `admins_are_listed` blocks. This is deliberate: a wrong policy
-must not let readiness pass. Fix the list; the engine never guesses a group.
+## When a control reports unknown
 
-## Runbook steps
+- `unknown` means the engine could not read the tenant, and counts as unsatisfied for a mandatory
+  control. It never passes by default.
+- A group named in `policy/identities.yaml` `admin_groups` that does not exist on the site leaves
+  `site_admin_accounts` unknown and `admins_are_listed` blocks. Deliberate: a wrong policy must not
+  let readiness pass. Fix the list; the engine never guesses a group.
+- An account in `foundation.accounts` that Jira does not know returns 404, leaving
+  `accounts_holding_disallowed_permissions` unknown. Fix the list rather than the control.
 
-Each console-owed control carries its own `where` and `todo` in `policy/foundation.yaml`, and
-`make <phase>` prints them for anything outstanding. There is no table here to fall out of step
-with the catalogue.
+## Global permissions
 
-The two native-creation controls are attested because Jira and Confluence global permissions have
-no public read or write API for other users. In the real lab, confirm the Jira global permission key
-with `GET /rest/api/3/permissions` and, if a key exists, replace the attestation with a
-`mypermissions` probe as a non-admin identity (one fact block in `facts.tf`, one catalogue edit).
+- Jira has no API listing who holds a global permission, but `POST /rest/api/3/permissions/check`
+  answers for any `accountId`. `account_global_permissions` asks per declared account and reports
+  anything outside what its `kind` allows in `policy/identities.yaml`.
+- This covers declared accounts only. A group granted a permission, holding accounts nobody
+  declared, is caught by neither this nor `admins_are_listed`.
+- Confluence has no equivalent read. Space creation is a documented step, not a control.
 
 ## Asset-treatment service (policy/treatment.yaml)
 
 The engine provisions the `ATS` service project, the `Asset` issue type (and adds it to the
-project's issue type scheme), the five Asset fields and the four request types. Three things
-remain console work:
+project's issue type scheme), the five Asset fields and the four request types. Three things remain
+console work:
 
-| Control | Where | What to do |
+| | Where | What to do |
 |---|---|---|
-| (no control; portal layout) | ATS > Project settings > Request types | Put the Asset fields (Platform standard, Instance key, Owner authority, Classification, Review date) on each request form and on the Asset issue screens. |
-| `asset_workflow_built` | ATS > Project settings > Workflows | Build the Asset workflow exactly as `jsm/asset-workflow.yaml` declares and assign it to the Asset issue type. Record the attestation with `sha256: "$(sha256sum jsm/asset-workflow.yaml)"`. |
-| `automation_rules_imported` | ATS > Project settings > Automation > Import | Fill the `{{ }}` placeholders from `contracts/<env>.json`, import `jsm/automation-rules.json`, enable the rules. Record the attestation with the file's sha256. |
+| portal layout (no control) | ATS > Project settings > Request types | Put the Asset fields (Platform standard, Instance key, Owner authority, Classification, Review date) on each request form and on the Asset issue screens. |
+| `asset_workflow_built` (control) | ATS > Project settings > Workflows | Build the Asset workflow exactly as `jsm/asset-workflow.yaml` declares and assign it to the Asset issue type. |
+| `automation_rules_imported` (step) | ATS > Project settings > Automation > Import | Fill the `{{ }}` placeholders from `contracts/<env>.json`, import `jsm/automation-rules.json`, enable the rules. |
 
-A later change to either file fails its control until the console work is repeated and the new
-hash recorded; the spike proves this ("[imports]"). Readiness dimension `treatment` reports the
-service; nothing depends on it yet.
+- The workflow is a control: Jira reports its statuses and transitions, so `asset_workflow_gaps`
+  names anything declared that the tenant does not have. The spike proves it (`[workflow]`).
+- The automation rules are a step: Jira exposes no read for them, so editing the file changes what
+  an operator must import and nothing can confirm they did.
+- Readiness dimension `treatment` reports the service; nothing depends on it yet.
 
 ## Recovering a provisioned setting removed out of band
 
@@ -79,4 +82,6 @@ terraform -chdir=stages/foundation plan     # exactly one create
 
 Then let the pipeline apply it. The spike proves this path (`tests/spike.sh`, "[provision]").
 The `state rm` is the operator's investigation step the gate's `drift.delete_blocks` rule asks for;
-nothing else is touched, and `prevent_destroy` and the gate still refuse every delete, update and replace.
+nothing else is touched, and `prevent_destroy` and the gate still refuse every delete, update and
+replace. An `import` is refused outright (`gate.yaml` `refuse_import`): the platform creates its own
+objects and never adopts an existing one.

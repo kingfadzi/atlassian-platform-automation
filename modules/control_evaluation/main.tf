@@ -32,7 +32,7 @@ locals {
   ready     = { for product in var.products : product => length([for id, dep in local.blocking : id if contains(dep, product)]) == 0 }
 }
 
-# A catalogue naming a fact the caller cannot observe, or an operator outside the eight, is a
+# A catalogue naming a fact the caller cannot observe, or an operator outside the seven, is a
 # configuration error at plan time, never an "unknown" verdict.
 resource "terraform_data" "catalogue_is_consistent" {
   lifecycle {
