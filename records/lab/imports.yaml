@@ -1,0 +1,7 @@
+# Artefacts built by hand in the console because Jira has no import for them, each bound to the
+# sha256 of the file that declares it (policy/treatment.yaml `imports`). Unlike a manual
+# confirmation this is machine-checked: editing the declared file invalidates the record, so these
+# do not expire and carry no window.
+#
+# Empty because neither artefact has been built on this tenant yet.
+records: []

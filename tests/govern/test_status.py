@@ -103,7 +103,7 @@ def test_an_outstanding_console_control_prints_its_instructions():
                          records="records/lab")
     assert "where: Confluence > Settings > Global permissions" in text
     assert "todo:  Grant Create space" in text
-    assert "then:  record it in records/lab/attestations.yaml" in text
+    assert "then:  record it in records/lab/manual_confirmations.yaml" in text
 
 
 def test_only_manually_confirmed_controls_name_the_record_file():
@@ -121,4 +121,4 @@ def test_the_records_path_follows_the_environment():
     verdicts["native_project_creation_closed"] = "fail"
     text = status.render(PHASES, CONTROLS, stages(foundation=dict(controls=verdicts)),
                          records="records/prod")
-    assert "records/prod/attestations.yaml" in text
+    assert "records/prod/manual_confirmations.yaml" in text

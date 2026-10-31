@@ -53,7 +53,8 @@ locals {
 
   schemes              = try(local.json.schemes.permissionSchemes, [])
   retention_unit       = { DAYS = 1, WEEKS = 7, MONTHS = 30, YEARS = 365, DECADES = 3650, FOREVER = 36500 }
-  manual_confirmations = try(yamldecode(file("${var.records_dir}/attestations.yaml")).records, [])
+  manual_confirmations = try(yamldecode(file("${var.records_dir}/manual_confirmations.yaml")).records, [])
+  import_records       = try(yamldecode(file("${var.records_dir}/imports.yaml")).records, [])
 
   tenant_facts = {
     anonymous_jira_projects = {

@@ -1,7 +1,7 @@
 # The asset-treatment service: the JSM project users onboard, change, review and retire assets
 # through. Platform desired state, provisioned by the foundation (stages/foundation/treatment.tf);
 # instances are what this service creates, never this file. Workflow and automation have no
-# public write API: they are declared in jsm/ and imported once by hand, attested by file hash.
+# public write API: they are declared in jsm/ and imported once by hand, bound to the file hash.
 version: 2026-10
 owner: PLATFORM-GOV
 
@@ -29,7 +29,7 @@ request_types:                        # portal entries; each creates an Asset is
   - { id: review,  name: Review an asset,   description: "Confirm an asset is still needed and correctly owned" }
   - { id: retire,  name: Retire an asset,   description: "Archive an asset that is no longer needed" }
 
-imports:                              # declared here, built or imported by hand, attested with the file's sha256
+imports:                              # declared here, built or imported by hand, recorded with the file's sha256
   - { id: asset_workflow,   file: jsm/asset-workflow.yaml,    how: "Build the Asset workflow in the console as the file describes" }
   - { id: automation_rules, file: jsm/automation-rules.json,  how: "Project settings > Automation > Import rules" }
 

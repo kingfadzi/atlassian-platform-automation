@@ -143,5 +143,5 @@ def _instructions(control: dict, records: str) -> list[str]:
     lines = [f"{'':<21}     where: {control['where']}",
              f"{'':<21}     todo:  {control['todo']}"]
     if control.get("fact") == "manual_confirmation":
-        lines.append(f"{'':<21}     then:  record it in {records}/attestations.yaml")
+        lines.append(f"{'':<21}     then:  record it in {records}/manual_confirmations.yaml")
     return lines

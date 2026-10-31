@@ -87,7 +87,7 @@ data "http" "request_types" {
 }
 
 locals {
-  import_records = { for r in local.manual_confirmations : r.id => r if r.kind == "manual_confirmation" && can(r.sha256) }
+  import_by_id = { for r in local.import_records : r.id => r if r.kind == "import" }
   treatment_facts = merge(
     {
       service_project_keys = {
@@ -109,7 +109,7 @@ locals {
     },
     { for i in local.treatment.imports : "import_current_${i.id}" => {
       known = true
-      value = try(local.import_records[i.id].sha256, "") == filesha256("${path.module}/../../${i.file}")
+      value = try(local.import_by_id[i.id].sha256, "") == filesha256("${path.module}/../../${i.file}")
     } },
   )
   treatment_intent = {

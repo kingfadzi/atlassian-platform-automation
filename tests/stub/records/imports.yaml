@@ -1,0 +1,3 @@
+# TEST FIXTURE placeholder. The spike overwrites this with records carrying the current sha256 of
+# each file in policy/treatment.yaml `imports`, so the hashes are never stale in the fixture.
+records: []

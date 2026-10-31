@@ -397,10 +397,10 @@ controls:
 
   - id: asset_workflow_built
     phase: intake
-    title: Asset workflow built as declared in jsm/asset-workflow.yaml (attested by file hash)
+    title: Asset workflow built as declared in jsm/asset-workflow.yaml (bound to its file hash)
     provision: runbook
     where: "the treatment project > Project settings > Workflows"
-    todo: "Build the Asset workflow as jsm/asset-workflow.yaml describes, then record the file's sha256 as the import attestation."
+    todo: "Build the Asset workflow as jsm/asset-workflow.yaml describes, then record the file's sha256 as the import record."
     mandatory: true
     depends: [treatment]
     fact: import_current_asset_workflow
@@ -408,10 +408,10 @@ controls:
 
   - id: automation_rules_imported
     phase: intake
-    title: Automation rules imported as declared in jsm/automation-rules.json (attested by file hash)
+    title: Automation rules imported as declared in jsm/automation-rules.json (bound to its file hash)
     provision: runbook
     where: "the treatment project > Project settings > Automation > Import rules"
-    todo: "Import jsm/automation-rules.json, then record the file's sha256 as the import attestation."
+    todo: "Import jsm/automation-rules.json, then record the file's sha256 as the import record."
     mandatory: true
     depends: [treatment]
     fact: import_current_automation_rules
