@@ -89,7 +89,10 @@ locals {
     }
     domains_claimed_by_other_orgs = {
       known = local.status.domains == 200 && alltrue([for d in local.org_domains : try(d.attributes.verifiedOrgsQuantity, null) != null])
-      value = [for d in local.org_domains : d.attributes.name if try(d.attributes.verifiedOrgsQuantity, 0) > 1]
+      # The field is present and null on a tenant that does not report it, and try() catches
+      # errors rather than nulls, so coalesce before comparing. `known` above is what makes the
+      # control report unknown; value is still evaluated, so it must not fail.
+      value = [for d in local.org_domains : d.attributes.name if coalesce(try(d.attributes.verifiedOrgsQuantity, 0), 0) > 1]
     }
     product_realms = {
       known = local.status.workspaces == 200 && length(local.site_workspaces) > 0

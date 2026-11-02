@@ -48,6 +48,12 @@ resource "terraform_data" "phases_are_known" {
       error_message = "A console control must say where to go and what to do: ${join(", ", [for c in local.catalogue_controls :
       c.id if try(c.provision, "") == "runbook" && (try(c.where, "") == "" || try(c.todo, "") == "")])}."
     }
+    # one([]) is null, not an error, so a missing lead would reach Jira as leadAccountId: null and
+    # fail partway through creating the service. Say so before anything is written.
+    precondition {
+      condition     = local.lead_account != null
+      error_message = "policy/treatment.yaml wants the ${local.treatment.project.lead} account to lead ${local.treatment.project.key}, but no account of that kind is declared in foundation.accounts (kinds declared: ${join(", ", distinct([for a in local.accounts : a.kind]))})."
+    }
     # A kind policy does not define resolves to an empty allow-list, which fails the control while
     # reporting every permission the account holds instead of naming the typo.
     precondition {
