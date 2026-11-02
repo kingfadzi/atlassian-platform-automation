@@ -42,7 +42,7 @@ for stage in "${STAGES[@]}"; do
   dir="$ROOT/stages/$stage"
   printf 'terraform {\n  backend "local" {}\n}\n' > "$dir/backend_override.tf"
   rm -f "$dir"/terraform.tfstate*
-  "$TF" -chdir="$dir" init -no-color >/dev/null
+  "$TF" -chdir="$dir" init -reconfigure -no-color >/dev/null   # -reconfigure: a real-tenant backend may be configured here
   "$TF" -chdir="$dir" validate -no-color >/dev/null && echo "[$stage] validate ok"
 done
 
