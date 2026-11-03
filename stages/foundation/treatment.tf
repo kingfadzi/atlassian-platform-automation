@@ -66,7 +66,7 @@ module "request_type" {
 
 # Read back ----------------------------------------------------------------------------------
 data "http" "projects" {
-  url             = "${var.tenant.site_url}/rest/api/3/project/search?maxResults=100"
+  url             = "${var.tenant.site_url}/rest/api/3/project/search?maxResults=100&expand=lead"
   request_headers = local.site_auth
   depends_on      = [module.treatment_project]
 }
@@ -121,6 +121,13 @@ locals {
       known = data.http.request_types.status_code == 200
       value = [for r in try(jsondecode(data.http.request_types.response_body).values, []) : r.name]
     }
+    # The module sets the lead at create and then ignores changes to it, so a reassignment in
+    # the console is invisible unless it is read back. An absent project gives null, which fails.
+    treatment_project_lead = {
+      known = data.http.projects.status_code == 200
+      value = try(one([for p in jsondecode(data.http.projects.response_body).values :
+      p.lead.accountId if p.key == local.treatment.project.key]), null)
+    }
     asset_workflow_gaps = {
       known = data.http.workflows.status_code == 200
       value = concat(
@@ -134,6 +141,7 @@ locals {
     "policy.asset_issue_type"       = [local.treatment.asset.issue_type]
     "policy.asset_field_names"      = [for f in local.treatment.asset.fields : f.name]
     "policy.request_type_names"     = [for r in local.treatment.request_types : r.name]
+    "policy.treatment_lead"         = local.lead_account
   }
   treatment_contract = {
     project_key   = module.treatment_project.key

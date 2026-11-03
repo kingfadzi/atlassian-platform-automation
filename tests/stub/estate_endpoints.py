@@ -18,8 +18,12 @@ def search_projects():
     values = []
     for p in db["projects"].values():
         meta = db["project_meta"].get(p["key"], {})
+        # Forcing the control reassigns the treatment desk's lead, as a console change would.
+        lead = p["lead"]["accountId"]
+        if "treatment_lead_is_service_account" in failing and p["key"] == "ATS":
+            lead = "USER-LAB-ADMIN"
         values.append({**{k: v for k, v in p.items() if k != "_scheme"},
-                       "lead": {"accountId": p["lead"]["accountId"], "active": meta.get("lead_active", True)},
+                       "lead": {"accountId": lead, "active": meta.get("lead_active", True)},
                        "insight": {"totalIssueCount": 1, "lastIssueUpdateTime": meta.get("last_activity", "2026-10-20T00:00:00.000+0000")},
                        "properties": db["project_props"].get(p["key"], {})})
     return jsonify({"values": values, "total": len(values), "isLast": True})

@@ -309,6 +309,19 @@ controls:
     fact: treatment_request_types
     require: { op: superset_of, value_from: policy.request_type_names }
 
+  # The lead is the account accountable for the intake desk itself, not for anything it creates
+  # (instance ownership is the Asset record's Owner authority). It must be a service account: a
+  # named human is a liability when people change roles. The module sets it at create and ignores
+  # later changes, so only this control notices a reassignment.
+  - id: treatment_lead_is_service_account
+    phase: intake
+    title: The treatment service is led by the declared service account
+    provision: engine
+    mandatory: true
+    depends: [treatment]
+    fact: treatment_project_lead
+    require: { op: equals, value_from: policy.treatment_lead }
+
   - id: asset_workflow_built
     phase: intake
     title: Asset workflow built as declared in jsm/asset-workflow.yaml

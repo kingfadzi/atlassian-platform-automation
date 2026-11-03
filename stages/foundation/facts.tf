@@ -24,7 +24,8 @@
 #   jira_paid_application_count      number   Jira applications on a PAID plan
 #   confluence_seat_capacity         number   seat capacity of the Confluence workspace (admin API); Confluence has no plan API
 #   (treatment.tf)  service_project_keys, issue_type_names, custom_field_names, treatment_request_types,
-#                   asset_workflow_gaps (declared statuses and transitions Jira does not report)
+#                   asset_workflow_gaps (declared statuses and transitions Jira does not report),
+#                   treatment_project_lead (account id leading the treatment project)
 
 locals {
   http = {

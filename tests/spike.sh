@@ -248,6 +248,22 @@ out foundation details | grep -q '"disallowed_permissions":\[\]' \
   || { echo "  FAIL: removing the permission left a finding"; exit 1; }
 echo "  permission removed: every declared account within its kind"
 
+echo "[lead] reassigning the intake desk's lead must be caught, though the module ignores the field"
+curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/treatment_lead_is_service_account" >/dev/null
+"$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
+python3 - "$(out foundation blocking)" "$(out foundation controls)" <<'LEAD'
+import json, sys
+blocking, controls = json.loads(sys.argv[1]), json.loads(sys.argv[2])
+assert controls["treatment_lead_is_service_account"] == "fail", controls["treatment_lead_is_service_account"]
+assert blocking.get("treatment_lead_is_service_account") == ["treatment"], blocking
+print("  lead reassigned in the tenant: reported and blocking treatment only")
+LEAD
+curl -s -X DELETE "http://127.0.0.1:$PORT/__stub/fail/treatment_lead_is_service_account" >/dev/null
+apply_quiet foundation
+out foundation controls | grep -q '"treatment_lead_is_service_account":"pass"' \
+  || { echo "  FAIL: restoring the lead left the control unsatisfied"; exit 1; }
+echo "  lead restored: the declared service account leads the desk"
+
 echo "[workflow] a transition missing from the tenant's workflow must be named, not taken on trust"
 curl -s -X POST "http://127.0.0.1:$PORT/__stub/fail/asset_workflow_gaps" >/dev/null
 "$TF" -chdir="$ROOT/stages/foundation" apply -auto-approve -no-color "${VARS[@]}" >/tmp/spike-plan.out 2>&1 || true
