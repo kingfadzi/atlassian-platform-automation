@@ -37,13 +37,14 @@ locals {
   }
   # Matched on the site URL prefix: a product hostUrl carries its own path ("<site>/wiki"), and
   # some workspaces report no hostUrl at all.
-  site_workspaces      = [for w in try(local.json.workspaces.data, []) : w if startswith(try(w.attributes.hostUrl, ""), var.tenant.site_url)]
-  confluence_workspace = try(one([for w in local.site_workspaces : w if w.attributes.typeKey == "confluence"]), null)
-  role_name_by_id      = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
-  allowed_by_kind      = { for a in local.accounts : a.id => try(local.identities.kinds[a.kind], []) }
-  held_by_account      = { for id, d in data.http.account_permissions : id => try(jsondecode(d.response_body).globalPermissions, []) }
-  admin_member_status  = { for g, d in data.http.admin_group_members : g => d.status_code }
-  admin_members        = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
+  site_workspaces            = [for w in try(local.json.workspaces.data, []) : w if startswith(try(w.attributes.hostUrl, ""), var.tenant.site_url)]
+  confluence_workspace       = try(one([for w in local.site_workspaces : w if w.attributes.typeKey == "confluence"]), null)
+  role_name_by_id            = { for r in try(local.json.project_roles, []) : tostring(r.id) => r.name }
+  watched_global_permissions = [for k, perm in try(jsondecode(data.http.jira_permissions.response_body).permissions, {}) : k if perm.type == "GLOBAL"]
+  allowed_by_kind            = { for a in local.accounts : a.id => try(local.identities.kinds[a.kind], []) }
+  held_by_account            = { for id, d in data.http.account_permissions : id => try(jsondecode(d.response_body).globalPermissions, []) }
+  admin_member_status        = { for g, d in data.http.admin_group_members : g => d.status_code }
+  admin_members              = flatten([for g, d in data.http.admin_group_members : try([for m in jsondecode(d.response_body).values : m.accountId], [])])
   # NOERROR and NXDOMAIN are both definitive answers; any other Status means the resolver did not answer.
   txt_json       = { for k, d in data.http.domain_txt : k => try(jsondecode(d.response_body), {}) }
   txt_definitive = alltrue([for k, d in data.http.domain_txt : d.status_code == 200 && contains([0, 3], try(local.txt_json[k].Status, -1))])

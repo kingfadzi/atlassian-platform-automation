@@ -6,10 +6,30 @@ owner: PLATFORM-GOV
 
 admin_groups: [org-admins]                  # group memberships the foundation reads to find admins; a group that does not exist on the site leaves admins_are_listed unknown (fix the list, do not guess)
 
-# Global permissions an account of each kind may hold. The engine asks Jira what each declared
-# account actually holds and reports anything outside its kind's list. SYSTEM_ADMIN is allowed to
-# no kind: nothing the platform runs needs it.
+# JIRA global permissions an account of each kind may hold. The engine asks Jira for every GLOBAL
+# permission it reports and compares what each declared account holds with its kind's list, so a
+# permission added by Atlassian or by an app shows up here as undeclared rather than unnoticed.
+# SYSTEM_ADMIN is allowed to no kind: nothing the platform runs needs it.
+#
+# Jira only. Confluence exposes no equivalent read (three endpoints 404, see policy/unchecked.yaml),
+# so nothing here says anything about Confluence permissions.
 kinds:
-  human_admin: [ADMINISTER, CREATE_PROJECT, CREATE_SHARED_OBJECTS, BULK_CHANGE, USER_PICKER]
-  engine:      [ADMINISTER, CREATE_PROJECT]
-  emergency:   [ADMINISTER, CREATE_PROJECT, CREATE_SHARED_OBJECTS, BULK_CHANGE, USER_PICKER]
+  human_admin:
+    - ADMINISTER
+    - CREATE_PROJECT
+    - CREATE_SHARED_OBJECTS
+    - BULK_CHANGE
+    - USER_PICKER
+    - MANAGE_GROUP_FILTER_SUBSCRIPTIONS
+    - com.atlassian.atlas.jira__jira-townsquare-link-unconnected-issue-glance-view-permission   # added by the Atlassian Home app, granted to admins
+  engine:
+    - ADMINISTER
+    - CREATE_PROJECT
+  emergency:
+    - ADMINISTER
+    - CREATE_PROJECT
+    - CREATE_SHARED_OBJECTS
+    - BULK_CHANGE
+    - USER_PICKER
+    - MANAGE_GROUP_FILTER_SUBSCRIPTIONS
+    - com.atlassian.atlas.jira__jira-townsquare-link-unconnected-issue-glance-view-permission

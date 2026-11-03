@@ -58,6 +58,16 @@ def group_members():
     return jsonify({"values": [{"accountId": m, "active": True} for m in members], "total": len(members), "isLast": True})
 
 
+@provision.get("/rest/api/3/permissions")
+def permission_definitions():
+    """Every permission Jira knows, which is where the watched global set comes from."""
+    glob = ["ADMINISTER", "SYSTEM_ADMIN", "CREATE_PROJECT", "CREATE_SHARED_OBJECTS",
+            "BULK_CHANGE", "USER_PICKER", "MANAGE_GROUP_FILTER_SUBSCRIPTIONS"]
+    perms = {k: {"key": k, "name": k.title().replace("_", " "), "type": "GLOBAL"} for k in glob}
+    perms["BROWSE_PROJECTS"] = {"key": "BROWSE_PROJECTS", "name": "Browse Projects", "type": "PROJECT"}
+    return jsonify({"permissions": perms})
+
+
 @provision.post("/rest/api/3/permissions/check")
 def permissions_check():
     """Bulk permission check. Honours accountId, so an admin can ask what any account holds;

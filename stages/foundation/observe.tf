@@ -77,14 +77,21 @@ data "http" "admin_group_members" {
   request_headers = local.site_auth
 }
 
+# Every global permission Jira reports, so the check below has no blind spot. A hand-kept list
+# rots: MANAGE_GROUP_FILTER_SUBSCRIPTIONS was missing from one until a console page showed it.
+data "http" "jira_permissions" {
+  url             = "${var.tenant.site_url}/rest/api/3/permissions"
+  request_headers = local.site_auth
+}
+
 # What global permissions each declared account actually holds. Asked as admin, per account: the
 # bulk check honours accountId, so no probe identity is needed. The loop is over the declared
-# accounts, which are known at plan time.
+# accounts, which are known at plan time; only the request body depends on the read above.
 data "http" "account_permissions" {
   for_each        = toset([for a in local.accounts : a.id])
   url             = "${var.tenant.site_url}/rest/api/3/permissions/check"
   method          = "POST"
-  request_body    = jsonencode({ accountId = each.value, globalPermissions = local.rules.watched_global_permissions })
+  request_body    = jsonencode({ accountId = each.value, globalPermissions = local.watched_global_permissions })
   request_headers = merge(local.site_auth, { "Content-Type" = "application/json" })
 }
 

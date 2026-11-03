@@ -12,6 +12,3 @@ permitted_realms:
   lab: [global]   # synthetic data only, so no residency requirement applies
   prod: [eu]      # supported product data pinned to the EU
 
-# Jira global permissions the engine asks about for each declared account. Only keys listed here
-# are read, so adding one widens the check; what each kind may hold is policy/identities.yaml.
-watched_global_permissions: [ADMINISTER, SYSTEM_ADMIN, CREATE_PROJECT, CREATE_SHARED_OBJECTS, BULK_CHANGE, USER_PICKER]
