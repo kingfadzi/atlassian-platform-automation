@@ -159,6 +159,7 @@ provisioned objects are therefore detected from the tenant read (`scheme_grants_
 
 ## Requirements and controls
 
-Requirements, the control register and the FS-COLLAB-01 profile live in `kingfadzi/atlassian-cloud`.
+Strategy, requirements, the control register and the FS-COLLAB-01 profile are included in
+[docs/strategy](docs/strategy/README.md).
 The embedded-Python MVP that preceded this implementation is in this repository's history up to
 commit 5318656; the per-asset admit and release stages up to commit 94fad8b.
