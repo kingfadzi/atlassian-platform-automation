@@ -30,7 +30,7 @@ The [52-control requirements register](control-requirements-register.md) defines
 
 The [automation coverage assessment](automation-coverage-assessment.md) maps the register to documented Atlassian interfaces, firm-side automation and supplier assurance, with gaps and a proposed validation sequence. It is documentation-based; tenant capabilities and control effectiveness remain untested.
 
-The [Platform Lifecycle](LIFECYCLE.md) review draft defines the platform and asset lifecycles in five phases: Initiation, Acquisition, Implementation, Operations, Disposal. Each state lists the observable checks that make it hold; each transition lists its trigger, steps and evidence.
+The [Platform Lifecycle](LIFECYCLE.md) review draft defines the platform and asset lifecycles in five phases: Initiation, Acquisition, Implementation, Operations, Disposal. Each phase states its outcome, applicable controls, evidence, automation and exit gate.
 
 - **Policy determines treatment:** Validated asset facts and applicable rules establish required handling, subject to accountable approvals; requesters do not select their own permissions.
 - **Enforcement makes decisions effective:** Apply and verify approved controls before release. A classification label or completed approval is not proof of access restriction.

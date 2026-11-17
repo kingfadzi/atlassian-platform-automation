@@ -2,336 +2,291 @@
 
 Review draft | 17 November 2026 | Register v0.2 | Profile `FS-COLLAB-01 v0.1`
 
-- The states the platform and each asset can be in, how to tell which one holds, and how each moves to the next.
-- Phases: Initiation, Acquisition, Implementation, Operations, Disposal (NIST system development life cycle).
-- Gaps and open decisions are in [open items](../open-items.md), not here.
+- Defines the platform journey before any automation is laid over it.
+- Implementation-neutral: names no tool, runtime or repository.
+- Does not replace the [platform strategy](00-platform_strategy.md), the [control register](control-requirements-register.md) or [asset treatment](02-asset_ownership_treatment.md).
 
-## Conventions
+## Phases
 
-- **State:** a named condition. It holds only when every check listed under it passes.
-- **Check:** one condition with its source: `tenant` (API read), `record` (the control record), `ServiceNow`, `identity provider`, or `test` (an exercised behaviour).
-- **Unknown:** a check that cannot be read is unknown. Unknown never satisfies a check.
-- **Transition:** trigger → numbered steps (actor: action) → resulting state → evidence written.
-- **Actors:**
-  - Requester; business application owner; approver (set by classification).
-  - Platform operator; Security; identity provider.
-  - Automation: scheduled or triggered runs, with no human in the step.
-- **Exception:** an attribute of a state, not a state. It carries scope, owner, compensating control and expiry: 30 days, or seven for high risk. When it expires, the check counts as failing again.
+- Five phases: **Initiation, Acquisition, Implementation, Operations, Disposal**.
+- Short forms of the NIST system development life cycle phases (SP 800-37 Rev 2).
+- Each phase also names the Risk Management Framework (RMF) steps it carries, as defined in SP 800-37.
+- Two lifecycles use the same five phases:
+  - **Platform lifecycle:** once per tenant. Organisation, sites, Jira, Confluence, shared controls, standards.
+  - **Asset lifecycle:** once per Jira project or Confluence space. Runs only while the platform is in Operations.
+- A product (Jira, Confluence) moves through Implementation separately; one product's readiness never passes the other.
+
+| Phase | RMF steps | Platform | Asset |
+|---|---|---|---|
+| Initiation | Prepare, Categorize | Intent, scope, applicable controls | Request, facts, classification, treatment decisions |
+| Acquisition | Select, Implement | Tenancy obtained; identity, foundation and standards established | Standard selected; project or space provisioned, restricted |
+| Implementation | Assess, Authorize | Each product assessed and authorised | Asset verified and released |
+| Operations | Monitor | Drift, change, review, response, recovery | Conformance, reassessment, change, restriction |
+| Disposal | — | Product, site or tenant exit | Retire, archive, retain, dispose |
+
+## How each phase is defined
+
+- **Outcome:** what is true when the phase is done.
+- **Entry:** what must already hold.
+- **Controls:** register IDs whose acceptance the phase depends on.
+- **Evidence:** what is recorded; follows the [evidence model](#evidence-model).
+- **Automation:** what must be automated, and how each part is met.
+- **Exit gate:** the decision that ends the phase.
+- **Owner:** proposed accountable role; named owners are not yet appointed (register).
+- **Open:** what the strategy does not yet define.
+
+How a part is met, from the register:
+
+- **Supported automation:** read, write and verify through a supported interface.
+- **Partial automation:** some of it automated; the rest controlled manual.
+- **Controlled manual:** a person acts in a console; automation reads the result back.
+- **Inherited:** supplier-operated; needs supplier evidence, never assumed.
+- **Gap:** no supported route; needs restriction, exception or vendor change.
 
 ## Platform lifecycle
 
-- The tenancy is shared. Jira and Confluence each hold their own state from Established onwards.
+### Platform Initiation
 
-| Phase | States |
-|---|---|
-| Initiation | Declared |
-| Acquisition | Provisioned, Established |
-| Implementation | Authorised |
-| Operations | Operating, Degraded |
-| Disposal | Withdrawing, Withdrawn |
+- **Outcome:** the platform's scope, applicable controls and creation-time constraints are explicit and versioned.
+- **Entry:** strategy sections 4.1–4.2 in scope; register and profile versions pinned.
+- **Controls:**
+  - Applicability recorded for all 52 register controls.
+  - Decided before anything is created: `DSP-19` (placement), `CEK-03` (cryptographic profile), `CEK-08` (customer-managed key capability), `I&S-05` (production and non-production separation), `DSP-15` (synthetic-only non-production), `AIS-02` (baseline referenced).
+- **Evidence:**
+  - Versioned platform intent: organisation, environments, sites, products, placement realm.
+  - Control applicability per control, with parameter bindings (`P-01`–`P-22`).
+  - Unresolved parameters and missing authoritative inputs (register, "Inputs still required").
+  - Creation-time constraints and their resolution, e.g. customer-managed keys need enrolment before site creation.
+- **Automation:**
+  - Validate the intent declaration for completeness and contradiction: supported automation.
+  - Applicability and parameter decisions: controlled manual (control owners).
+- **Exit gate:** every control has an applicability decision; no unresolved creation-time constraint.
+- **Owner:** platform owner; Security/GRC for applicability.
+- **Open:** production policy authority for the profile; customer-managed key adoption decision.
 
-### Declared
+### Platform Acquisition
 
-| Check | Source | Controls |
+- **Outcome:** the tenancy exists under recoverable custody; identity, shared foundation and product standards are established.
+- **Entry:** Initiation exit gate passed.
+- **Areas of work**, grouped by register domain:
+
+| Area | What is established | Controls |
 |---|---|---|
-| Intent exists and is versioned: organisation, environments, sites, products, placement realm | record | `AIS-02` |
-| Every register control has an applicability decision | record | all |
-| Every creation-time constraint has a resolution (placement, customer-managed keys) | record | `DSP-19`, `CEK-03`, `CEK-08` |
-| Production and non-production are separate declarations; non-production is synthetic-only | record | `I&S-05`, `DSP-15` |
+| Tenancy | Organisation, sites, Jira and Confluence, subscriptions, placement, administrative custody | `DSP-19`, `CEK-03`, `I&S-05` |
+| Identity and administration | Federation, provisioning, MFA, separate admin identities, timed elevation, emergency and service identities, separation of duties | `IAM-04`, `IAM-05`, `IAM-09`, `IAM-10` |
+| Exposure and flows | Anonymous access and public links closed, sharing defaults, network origins, permitted ingress and egress flows | `I&S-03`, `I&S-06`, `DSP-05`, `DSP-07`, `DSP-08`, `DSP-10` |
+| Logging and evidence | Audit collection, event coverage, retention, access, tamper resistance, log scrubbing, correlation, alert routing | `LOG-02`, `LOG-03`, `LOG-04`, `LOG-05`, `LOG-07`, `LOG-08`, `LOG-10`, `DSP-16` |
+| Apps and integrations | Approved apps, scopes, destinations, install restricted to platform admins | `STA-08`, `AIS-08`, `IPY-03` |
+| Product standards | Versioned Jira and Confluence patterns: roles, permission schemes, workflows, fields, space permissions, sharing | `AIS-02`, `CCC-06`, `DSP-07`, `DSP-08` |
+| Change and automation | Reviewed changes, authorised execution path, scoped writes, automation identity, vulnerability scanning of firm-managed automation | `CCC-02`, `CCC-04`, `AIS-06`, `TVM-03` |
+| Recovery | Protected recovery points, export route | `BCR-08`, `IPY-02` |
 
-**Declared → Provisioned.** Trigger: intent approved.
+- **Tenancy sequence** (bootstrap; read before create, stop on ambiguity):
+  - Confirm the target organisation against intent.
+  - Establish administrative custody; verify an alternate administrative path.
+  - Confirm creation prerequisites; hold provisioning while any is unresolved.
+  - Establish or adopt the Jira and Confluence instances.
+  - Bind automation identities per API family; read-only first; no universal admin credential.
+  - Capture the initial baseline: admins, groups, app access, existing configuration, what is not observable.
+  - Repeat the observation to prove reruns change nothing.
+- **Evidence:**
+  - Inventory with typed identifiers: organisation, site, cloud id, product instance.
+  - Custody and recovery verification; credential references only, never secrets.
+  - Capability record per property: entitlement, API and version, read/write/test support, limits, review date.
+  - Required-versus-actual settings per area, with the standard and baseline versions applied.
+  - Initial exposure, visibility limits ("not visible" kept distinct from "not present") and unknowns.
+- **Automation:**
+  - Observe tenancy, identity, exposure and audit settings: supported automation where readable.
+  - Create organisation, site, product; verify domains; configure SAML; buy subscriptions: controlled manual (no API).
+  - Accounts, groups and memberships: inherited from the identity provider; referenced, never created.
+  - Provision standards (roles, schemes, workflows, space permissions): supported automation where APIs exist.
+  - Shared Control policies (authentication, data security): gap while Atlassian marks the API disabled (G-01).
+  - Perimeter and data-loss controls: partial automation (G-05).
+- **Exit gate:** the bootstrap exit conditions hold, and every Acquisition control is in place, read back, or carries a recorded gap.
+  - Tenancy matches intent; custody is recoverable; automation identities proved per API family.
+  - Initial state recorded; reruns are safe; handoff to identity and foundation work has named prerequisites.
+- **Owner:** platform owner; IAM for identity; Security for exposure and logging; Procurement for subscriptions.
+- **Open:** G-01 shared-policy API; G-03 audit retention conflict (180 vs 365 days); G-05 perimeter scope; G-07 Confluence space-role API rollout; where evidence is stored and who holds it independently.
 
-1. Platform operator: create or adopt the organisation, site and products in the admin console.
-2. Automation: read the workspace inventory and compare it with intent. Stop on any mismatch.
-3. Platform operator: set up two verified administrative paths.
-4. Automation: authenticate as each automation identity against the organisation, Jira and Confluence APIs. Read only.
-5. Automation: record the baseline (admins, groups, apps, settings), then run it again. The second run must change nothing.
+### Platform Implementation
 
-- Evidence: inventory with typed identifiers, custody verification, capability record per API, baseline.
+- **Outcome:** a separate authorisation decision for Jira and for Confluence, stating what is supported and proved.
+- **Entry:** Acquisition exit gate passed for that product.
+- **Controls:** assessed by exercise, not by reading configuration.
+  - `AIS-05` security acceptance before release.
+  - `IAM-10` timed elevation expires; `IAM-05` denied paths fail.
+  - `I&S-03` permitted and denied browser, API and app paths.
+  - `CCC-07` drift detected; `CCC-09` return to known-good state.
+  - `LOG-03`, `LOG-14` alerts fire; collection failure detected within five minutes.
+  - `SEF-06`, `SEF-07` triage and response routes exercised.
+  - `BCR-08` restore into a clean target; `IPY-02` data retrievable.
+- **Evidence:**
+  - Scenario results on synthetic projects and spaces: provision, permitted and denied access, repeat run, stale authority, drift, interruption, recovery, evidence retrieval.
+  - Coverage limits and plan-blocked tests, recorded as untested, not passed.
+  - Authorisation decision per product: conformant within tested scope, approved exception, nonconformant, or unknown.
+- **Automation:**
+  - Repeatable qualification scenarios: supported automation.
+  - Restore tests and response exercises: controlled manual where the plan or supplier allows.
+- **Exit gate:** product authorised for named uses; exceptions have owner, scope and expiry.
+- **Owner:** platform owner coordinates; Security/GRC authorises.
+- **Open:** G-02 revocation latency; G-04 configuration excluded from backup; recovery entitlement on the chosen plan.
 
-### Provisioned
+### Platform Operations
 
-| Check | Source | Controls |
-|---|---|---|
-| Organisation, site and product instances match intent | tenant | `DSP-19` |
-| Products sit in the declared placement realm | tenant | `DSP-19` |
-| Two administrative paths verified | test | `IAM-09` |
-| Each automation identity authenticates with read access | test | `AIS-06`, `IPY-03` |
-| Baseline recorded; a repeat read changes nothing | record | `CCC-06` |
+- **Outcome:** continued use stays backed by current authority and evidence.
+- **Entry:** at least one product authorised.
+- **Controls:**
+  - Drift and change: `CCC-02`, `CCC-04`, `CCC-06`, `CCC-07` (critical settings every 15 minutes, others daily), `CCC-09`, `AIS-05`, `AIS-06`.
+  - Exceptions: `CCC-08` (30 days; seven for high risk).
+  - Access: `IAM-08` reviews (quarterly privileged/external/Restricted; six-monthly standard), `IAM-10`.
+  - Logging and response: `LOG-02`, `LOG-05`, `LOG-07`, `LOG-10`, `LOG-14`, `SEF-06`, `SEF-07`, `SEF-09`.
+  - Vulnerabilities: `AIS-07`, `TVM-03`, `TVM-06`, `TVM-08`.
+  - Dependencies: `STA-08`.
+  - Recovery: `BCR-08` quarterly restore tests.
+  - Non-production: `DSP-15`.
+- **Evidence:**
+  - Current posture per control; drift findings with detection time and resolution.
+  - Change records bound to reviewed revision and current authority.
+  - Exception register with expiry; access-review decisions and their enforcement.
+  - Alert, incident and response records; restore-test results.
+- **Automation:**
+  - Scheduled observation independent of merges: supported automation.
+  - Automatic correction only where explicitly authorised, tested and reversible.
+  - Expiry and review triggers: supported automation.
+  - Advisory checks for firm-managed automation: supported automation.
+- **Exit gate:** none; a material change (control, profile, supplier capability, standard) returns the affected product to Implementation.
+- **Owner:** platform owner; Security for response; IAM for reviews.
+- **Open:** detection rules and response routing (strategy 07 placeholder); SLO and error-budget values.
 
-**Provisioned → Established.** Trigger: Provisioned holds.
+### Platform Disposal
 
-1. Platform operator: verify domains, configure SSO and user provisioning, and close anonymous access and public links (console).
-2. Platform operator: route audit logs to the evidence store; restrict app installation to platform admins.
-3. Automation: create each standard's roles and permission schemes, and Confluence space roles.
-4. Automation: read back every check below. Anything unmet stays outstanding, with the console step that resolves it.
-
-- Evidence: required-versus-actual value for each check, standard versions applied.
-
-### Established (per product)
-
-| Check | Source | Controls |
-|---|---|---|
-| Declared domains verified; the verification record is present | tenant | `IAM-09` |
-| Managed accounts authenticate through the identity provider with MFA; admins use phishing-resistant MFA | tenant | `IAM-09` |
-| Every admin and privileged account is declared; each holds only what its kind allows | tenant | `IAM-04`, `IAM-05` |
-| Privileged elevation is time-bound | tenant | `IAM-10` |
-| Anonymous access off | tenant | `I&S-06`, `DSP-07` |
-| Public links off; no public or site-wide permission grants | tenant | `DSP-07`, `DSP-08` |
-| Ingress restricted to approved origins and clients | tenant | `I&S-03` |
-| Every permitted flow is recorded with owner and destination | record | `DSP-05`, `DSP-10` |
-| Every installed app and integration is approved, within its approved scopes | tenant, record | `STA-08`, `AIS-08` |
-| Audit events arrive in the evidence store, covering required event types | tenant, test | `LOG-03`, `LOG-05`, `LOG-07` |
-| Evidence store: access restricted, tamper-resistant, retention configured, sensitive fields scrubbed | test | `LOG-02`, `LOG-04`, `LOG-08`, `LOG-10`, `DSP-16` |
-| Each standard's roles, scheme and grants are present and match its declaration | tenant | `AIS-02`, `CCC-06` |
-| Changes pass the required reviewers; writes use the authorised path only | record | `CCC-02`, `CCC-04`, `AIS-06` |
-| Recovery points exist; an export route exists | tenant | `BCR-08`, `IPY-02` |
-| Firm-managed automation is scanned for vulnerabilities | record | `TVM-03` |
-
-**Established → Authorised.** Trigger: platform operator requests qualification for the product.
-
-1. Automation: run the qualification scenarios on synthetic projects or spaces:
-   - provision; permitted and denied access; repeat run
-   - stale authority; injected drift; interrupted run; evidence retrieval
-2. Automation: confirm an elevated grant expires on time.
-3. Platform operator: restore a synthetic dataset into a clean target; time the restore against the recovery-time and data-loss targets.
-4. Security: raise a test alert; confirm triage and the response route.
-5. Security/GRC: record the authorisation decision, permitted uses and any exceptions.
-
-- Evidence: scenario results; untested items marked untested; the authorisation record.
-
-### Authorised (per product)
-
-| Check | Source | Controls |
-|---|---|---|
-| A current authorisation record names the permitted uses | record | `AIS-05` |
-| Every qualification scenario passed or has an unexpired exception | record, test | `CCC-07`, `CCC-09`, `IAM-05`, `IAM-10`, `I&S-03` |
-| Restore result within target | test | `BCR-08`, `IPY-02` |
-| Alerting, collection-failure detection and response route proved | test | `LOG-03`, `LOG-14`, `SEF-06`, `SEF-07` |
-
-**Authorised → Operating.** Trigger: authorisation recorded.
-
-1. Automation: start scheduled observation: critical settings every 15 minutes, others daily.
-
-### Operating (per product)
-
-| Check | Source | Controls |
-|---|---|---|
-| All Established checks pass at the last observation | tenant | as above |
-| The last observation is within its interval | record | `CCC-07` |
-| Collection is healthy; failure is detected within five minutes | tenant | `LOG-14` |
-| No exception has expired | record | `CCC-08` |
-| No access review is overdue | record | `IAM-08` |
-| No vulnerability finding past its deadline; advisories checked daily | record | `AIS-07`, `TVM-03`, `TVM-06`, `TVM-08` |
-| Quarterly restore test within date | record | `BCR-08` |
-| Incident records are linked to evidence and protected | record | `SEF-09` |
-
-- **Operating → Degraded.** Trigger: any check fails or is unknown.
-  1. Automation: record the finding and notify the owner of the failing check.
-  2. Automation: block new admissions and releases that depend on that check.
-- **Material change → Established.** Trigger: profile, standard, supplier capability or control change. The product needs authorising again.
-
-### Degraded
-
-- Holds when: Authorised holds, and at least one Operating check fails or is unknown.
-- Existing assets follow their containment rule. Nothing is shut down wholesale.
-- **Degraded → Operating.** Trigger: the next observation passes, or an exception is approved.
-
-### Withdrawing
-
-| Check | Source | Controls |
-|---|---|---|
-| An authorised withdrawal decision exists | record | `CCC-04` |
-| New admissions blocked | record | — |
-
-1. Automation: export the required data; verify it is complete.
-2. Platform operator: offboard apps; revoke automation identities and credentials.
-3. Automation: confirm evidence and logs are kept under their retention schedules.
-
-### Withdrawn
-
-| Check | Source | Controls |
-|---|---|---|
-| Export verified complete | test | `IPY-02`, `IPY-03` |
-| No active automation identity or app | tenant | `STA-08` |
-| Evidence kept: logs 365 days, decisions seven years | record | `DSP-16`, `LOG-02`, `LOG-10`, `SEF-09` |
+- **Outcome:** a product, site or tenant is withdrawn with data retrieved, evidence retained and access removed.
+- **Entry:** an authorised decision to withdraw.
+- **Controls:**
+  - `IPY-02`, `IPY-03` data exported through supported, secure routes.
+  - `DSP-16`, `LOG-02`, `LOG-10`, `SEF-09` evidence and logs kept for their retention period (decision records seven years).
+  - `CCC-04` explicit authority for every removal.
+  - `STA-08` apps and integrations offboarded.
+- **Evidence:** export completeness, retained evidence location, revoked identities and credentials, removal authority.
+- **Automation:** export and identity revocation: partial automation; deletion: controlled manual.
+- **Exit gate:** nothing retained without a schedule; nothing deleted without authority.
+- **Owner:** platform owner; Records/Legal.
+- **Open:** not defined in the strategy; derived from register controls only.
 
 ## Asset lifecycle
 
 - Applies to every Jira project and Confluence space.
-- Each asset has one control record that holds its state.
+- Enters by request, or by migration wave.
+- One maintained control record per asset across all phases.
 
-| Phase | States |
+### Asset Initiation
+
+- **Outcome:** validated facts, approvals and four treatment decisions are recorded for the asset.
+- **Entry:** a request to create, migrate, change or reuse; platform product authorised for the use.
+- **Controls:** `DSP-03` inventory, `DSP-04` classification, `DSP-05` flows, `DSP-06` ownership and stewardship, `DSP-12` purpose, `CCC-04` authority, `CCC-08` exceptions.
+- **Evidence:**
+  - Request linked to the asset record.
+  - Business Application and owner from ServiceNow; technical admins and secondary custodian.
+  - Classification, intended audience, purpose, content role.
+  - Approvals by classification: Internal (owner); Confidential (owner plus GRC/Security); Restricted (GRC/Security accountable); Public (blocked by default).
+  - Four decisions: migration disposition, Rovo admission, sandbox eligibility, retention disposition.
+- **Automation:**
+  - Intake request and routing: supported automation (Jira Service Management).
+  - Business Application and owner lookup: supported automation against ServiceNow.
+  - Treatment rule evaluation: supported automation; approvals stay human.
+- **Exit gate:** facts validated and approved; missing, disputed or expired information blocks admission.
+- **Owner:** business application owner for facts; platform owner for the mechanism.
+- **Open:** exact ServiceNow fields and freshness limits; migration intake (strategy 03 placeholder).
+
+### Asset Acquisition
+
+- **Outcome:** the project or space exists on an approved standard with restrictive handling, not yet released.
+- **Entry:** Asset Initiation exit gate passed.
+- **Controls:** `AIS-02`, `AIS-06`, `CCC-04`, `CCC-06`, `DSP-07` security defaults, `DSP-08` privacy defaults, `IAM-04`, `IAM-05`, `STA-08` dependencies within scope.
+- **Evidence:** standard and version selected; plan, approvals and actual actions; resource identifiers; role-to-group bindings.
+- **Automation:**
+  - Create the project or space on the standard, bind roles to identity-provider groups, mark the standard: supported automation.
+  - Block direct creation outside the governed path: partial automation (G-06).
+- **Exit gate:** the asset exists with verified restrictive handling.
+- **Owner:** platform owner.
+- **Open:** G-06 ordinary-user creation bypass; Confluence space creation restricted only on paid plans.
+
+### Asset Implementation
+
+- **Outcome:** the asset is authorised for its declared use and audience.
+- **Entry:** Asset Acquisition exit gate passed.
+- **Controls:** `DSP-04`, `DSP-07`, `DSP-10` transfers, `IAM-05`, `IAM-15` authorisation in context, `I&S-06` separation of audiences, `AIS-05`.
+- **Evidence:** release record linking authority, versions, read-back configuration, effective-access tests and registration.
+- **Automation:**
+  - Read back configuration against the standard: supported automation.
+  - Effective-access tests (permitted and denied identities): supported automation.
+  - Release decision: controlled manual where approvals require it.
+- **Exit gate:** released; or held, with remediation assigned.
+- **Owner:** platform owner; approver by classification.
+- **Open:** Jira classification API experimental (G-07).
+
+### Asset Operations
+
+- **Outcome:** the asset stays conformant to its standard and its treatment stays current.
+- **Entry:** asset released.
+- **Controls:** `CCC-07` conformance, `CCC-08` exceptions, `IAM-08` access reviews, `IAM-15`, `DSP-03`, `DSP-05`, `DSP-06` reviews, `DSP-12`, `DSP-17`, `STA-08`.
+- **Evidence:** conformance results per asset; reassessment triggers and outcomes; exceptions with expiry; restricted-handling records.
+- **Automation:**
+  - Discover every project and space, including ones created outside intake: supported automation.
+  - Judge each against its standard and treatment: supported automation.
+  - Reassess on trigger (ownership, classification, standard revision, dependency change, expiry): supported automation.
+  - Contain, assign, remediate, verify: reporting is supported automation; containment requires explicit, approved rules.
+  - Unattested assets at a migration cutoff get **Unclassified-Restricted** handling.
+- **Exit gate:** none; a material change returns the asset to Initiation.
+- **Owner:** business application owner for facts; platform owner for enforcement.
+- **Open:** containment rules per rung and who authorises them.
+
+### Asset Disposal
+
+- **Outcome:** the asset is retired according to its retention disposition: standard lifecycle, compliant archive, legal hold, or deletion where permitted.
+- **Entry:** retirement request, application lifecycle end, or retention trigger.
+- **Controls:** `DSP-16` retention, `DSP-17` sensitive-data disposal, `IPY-02` retrieval, `CCC-04` explicit destructive authority.
+- **Evidence:** disposition decision, archive or export location, access removed, record kept open while preservation applies.
+- **Automation:** restrict and archive: partial automation; deletion: controlled manual with explicit authority.
+- **Exit gate:** disposition complete; a decision not to migrate does not close the record.
+- **Owner:** business application owner; Records/Legal.
+- **Open:** archive solution and retention schedules (strategy 05 placeholder).
+
+## Readiness boundaries
+
+- **Foundation readiness:** shared controls meet the prerequisites of the next intended use.
+- **Product readiness:** Jira or Confluence has passed Platform Implementation.
+- **Asset readiness:** a specific project or space has passed Asset Implementation.
+- Provisioned is not released; an approved asset never compensates for a missing shared control.
+- An unknown mandatory control blocks the uses that depend on it; it never becomes a pass.
+
+## Execution model
+
+- Sequence for every managed change: validate inputs → observe → evaluate and plan → review → revalidate → apply → verify → register and record.
+- Authority comes from designated systems; a merge never replaces a business or control approval.
+- Only declared resources and properties are managed; omission never authorises deletion.
+- A material change to inputs or target invalidates the plan.
+- Unreadable state is unknown, not conformant.
+- Drift observation runs independently of merges; old desired state never restores withdrawn access.
+
+## Evidence model
+
+| Element | Content |
 |---|---|
-| Initiation | Unregistered, Requested, Pending information, Approved |
-| Acquisition | Provisioned |
-| Implementation | Held, Released |
-| Operations | Nonconformant, Restricted, Dormant |
-| Disposal | Retiring, Archived, On hold, Disposed |
+| Scope | Organisation, site, product, environment, resource, managed properties |
+| Authority and versions | Control IDs, register and profile versions, standard version, revision, input and approval references |
+| Execution | Run identity and time, execution identity, proposed and attempted actions, failures |
+| Verification | Observations, behavioural tests, identities and paths tested, coverage not tested |
+| Decision | Outcome, reasons, exceptions, owner, observation time, expiry |
 
-### Unregistered
+- Record how a control is met separately from its result.
+- Results: conformant within tested scope, nonconformant, unknown or stale, under approved exception.
+- Git holds intent and definitions; secrets, plans, sensitive observations and retained evidence stay outside it.
+- Operational logs: 90 days searchable, 365 days total. Decision records: seven years after closure.
 
-- Holds when: the project or space exists in the tenant (`tenant`) with no control record (`record`).
-- Covers assets created outside intake, and assets that arrived by migration.
+## Open across the lifecycle
 
-1. Automation: record it, identify likely owners from its admins, and notify them.
-2. **→ Requested:** an owner registers it through intake.
-3. **→ Restricted (Unclassified-Restricted):** no registration by the deadline.
-
-### Requested
-
-| Check | Source | Controls |
-|---|---|---|
-| An intake request (create, migrate, change, reuse) is linked to a control record | record | `CCC-04` |
-
-**Requested → Approved.**
-
-1. Automation: look up the Business Application in ServiceNow; check it is active and has an owner.
-2. Requester: supply classification, audience, purpose and custodians.
-3. Automation: compare the declarations with ServiceNow and tenant evidence; list any discrepancies.
-4. Automation: evaluate the treatment rules, producing four decisions (migration, Rovo, sandbox, retention) and a standard.
-5. Approvers, set by classification:
-   - Internal: business application owner.
-   - Confidential: owner, plus GRC/Security.
-   - Restricted: GRC/Security accountable.
-   - Public: blocked by default.
-
-- Failure leads to Pending information (missing, stale or disputed facts) or rejected.
-
-### Pending information
-
-- Holds when: Requested holds, and at least one Approved check fails or is unknown.
-- The missing, stale or disputed facts and who owes them are recorded (`record`).
-- Exits:
-  - **→ Requested:** the facts are supplied; the Requested → Approved steps run again.
-  - **→ rejected:** no response by the due date, or the request is withdrawn.
-
-### Approved
-
-| Check | Source | Controls |
-|---|---|---|
-| Business Application active; owner current | ServiceNow | `DSP-06` |
-| Custodians resolve to active identities | identity provider | `DSP-06` |
-| Classification, audience and purpose recorded | record | `DSP-04`, `DSP-12` |
-| Data inventory and flows recorded | record | `DSP-03`, `DSP-05` |
-| Four decisions, plus standard id and version | record | `DSP-12` |
-| Approvals match classification; none expired | record | `CCC-04`, `CCC-08` |
-
-**Approved → Provisioned.**
-
-1. Automation: revalidate owner, Business Application and approvals. Stop if any is stale.
-2. Automation: create the project or space on the standard.
-3. Automation: bind each role to its identity-provider group, and stamp the standard id.
-4. Automation: read back and mark the record "not released".
-
-### Provisioned
-
-| Check | Source | Controls |
-|---|---|---|
-| Exists with the standard id stamped | tenant | `AIS-02`, `CCC-06` |
-| Scheme is the standard's; only declared role bindings; groups follow the identity-provider pattern | tenant | `IAM-04`, `IAM-05` |
-| No anonymous or public grants; privacy defaults applied | tenant | `DSP-07`, `DSP-08` |
-| Dependencies within approved scope | tenant, record | `STA-08` |
-| Record says "not released" and holds resource ids | record | `AIS-06` |
-
-**Provisioned → Released.**
-
-1. Automation: read back configuration against the standard.
-2. Automation: run access tests. A permitted identity succeeds; an unrelated identity is denied.
-3. Automation: verify flows and dependencies are within approved scope.
-4. Approver: confirm, where the classification requires it.
-5. Automation: write the release record.
-
-- Failure leads to Held, with remediation owner and due date.
-
-### Held
-
-- Holds when: Provisioned holds; release is blocked; a remediation owner and due date are recorded.
-- Exits:
-  - **→ Released:** reverification passes.
-  - **→ Retiring:** the request is abandoned.
-
-### Released
-
-| Check | Source | Controls |
-|---|---|---|
-| All Provisioned checks pass at the last observation, apart from the "not released" marker | tenant | as above |
-| Release record current | record | `AIS-05` |
-| Effective access within audience | test | `IAM-15`, `I&S-06` |
-| Transfers match approved flows | tenant, record | `DSP-10` |
-| Business Application still active | ServiceNow | `DSP-06` |
-| Access review and stewardship review not overdue | record | `IAM-08`, `DSP-06` |
-| No expired exception | record | `CCC-08` |
-| Sensitive-data handling applied as declared | record | `DSP-17` |
-
-- **→ Nonconformant:** any check fails or is unknown.
-- **→ Requested (reassessment):** owner, classification, Business Application lifecycle or standard version changes. Access stays unchanged until a decision; an overdue reassessment makes the asset Nonconformant.
-- **→ Dormant:** no activity within the dormancy period.
-- **→ Retiring:** a retirement request, or the Business Application is retired.
-
-### Nonconformant
-
-1. Automation: record the finding, notify the owner, and set the due date by severity.
-
-- Exits:
-  - **→ Released:** the next observation passes, or an exception is approved.
-  - **→ Restricted:** the due date is missed, or the finding is high risk.
-
-### Restricted
-
-| Check | Source | Controls |
-|---|---|---|
-| Access limited to the owner, remediation personnel and platform admins | tenant | `IAM-05`, `IAM-15` |
-| External access and Rovo off | tenant | `DSP-07`, `DSP-12` |
-| Scope, remediation owner and expiry recorded | record | `CCC-08` |
-
-- Exits:
-  - **→ Released:** remediation is verified.
-  - **→ Retiring:** the expiry passes unresolved.
-
-### Dormant
-
-- Holds when: Released checks hold, and there has been no activity within the dormancy period (`tenant`).
-- Exits:
-  - **→ Released:** the owner confirms it is still in use; reassessment follows.
-  - **→ Retiring:** the owner declines, or doesn't respond by the due date.
-
-### Retiring
-
-1. Automation: read the retention disposition from the record.
-2. Automation: export where required; verify it is complete.
-3. Automation: remove all access except custodians.
-4. Records/Legal: confirm the disposition.
-
-- Exits: **→ Archived**, **→ On hold**, or **→ Disposed**.
-
-### Archived
-
-| Check | Source | Controls |
-|---|---|---|
-| Read-only; access limited to custodians | tenant | `DSP-17` |
-| Retention end date recorded | record | `DSP-16` |
-| Retrievable | test | `IPY-02` |
-
-### On hold
-
-- Holds when: a legal hold is recorded (`record`) and no deletion is possible (`tenant`).
-
-### Disposed
-
-| Check | Source | Controls |
-|---|---|---|
-| Asset absent from the tenant | tenant | `DSP-17` |
-| Explicit deletion authority recorded | record | `CCC-04` |
-| Control record kept with disposal evidence for seven years | record | `DSP-16` |
-
-## Every automated change
-
-- Validate inputs → observe → evaluate and plan → review → revalidate → apply → verify → record.
-- Applies only to declared resources and properties. Omission never authorises deletion.
-- Unreadable state is unknown. Old desired state never restores withdrawn access.
-
-## Evidence written by every transition
-
-- Scope, authority and versions (control IDs, register, profile, standard), actor and time.
-- Actions attempted, values read back, tests run, result, exceptions, expiry.
+- Strategy sections 03–08 are placeholders: migration, sandbox copying, retention and archive, Rovo, continuous governance, decisions.
+- Vendor gaps G-01 to G-07 (automation coverage assessment) have no agreed treatment.
+- Named owners are not appointed.
+- Evidence store and its independent custody are not selected.
